@@ -95,10 +95,23 @@ class FakeConnector:
 
 
 @dataclass
+class FakeTokenGateway:
+    requests: list[dict[str, Any]] = field(default_factory=list)
+
+    def create(self, config: dict[str, Any]) -> str:
+        self.requests.append(config)
+        return f"auth_tokens/token-{len(self.requests)}"
+
+
+@dataclass
 class FakeBackend:
     voices: FakeVoicesGateway = field(default_factory=FakeVoicesGateway)
     synth: FakeSynthesizer = field(default_factory=FakeSynthesizer)
     connector: FakeConnector | None = None
+    tokens: FakeTokenGateway = field(default_factory=FakeTokenGateway)
+
+    def token_gateway(self) -> FakeTokenGateway:
+        return self.tokens
 
     def voice_catalog(self) -> VoiceCatalog:
         return VoiceCatalog(self.voices)

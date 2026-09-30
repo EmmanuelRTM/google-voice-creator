@@ -5,7 +5,7 @@ from __future__ import annotations
 from mcp.server.mcpserver import MCPServer
 
 from voice_creator.config import Settings
-from voice_creator.studio.backend import GeminiBackend
+from voice_creator.studio.backend import Backend, GeminiBackend
 from voice_creator_mcp.app.inputs import PathPolicy
 from voice_creator_mcp.app.rate_limit import RateLimiter
 from voice_creator_mcp.app.workspace import WorkspaceProvider
@@ -16,7 +16,11 @@ DEFAULT_REMOTE_RATE_LIMIT_PER_MINUTE = 30
 
 
 def create_server(
-    settings: Settings | None = None, *, remote: bool = False, authenticated: bool = False
+    settings: Settings | None = None,
+    *,
+    remote: bool = False,
+    authenticated: bool = False,
+    backend: Backend | None = None,
 ) -> MCPServer:
     """Build the server for a deployment.
 
@@ -30,7 +34,7 @@ def create_server(
     token is never forwarded (no token passthrough).
     """
     settings = settings or Settings.from_env()
-    backend = GeminiBackend(settings)
+    backend = backend or GeminiBackend(settings)
     workspaces = WorkspaceProvider(
         data_dir=settings.data_dir,
         output_dir=settings.output_dir,

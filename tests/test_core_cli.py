@@ -102,3 +102,13 @@ def test_parse_cast(raw, expected) -> None:
 def test_parse_cast_rejects_bad_entries(raw) -> None:
     with pytest.raises(ValueError):
         parse_cast(raw)
+
+
+def test_token_command_prints_an_ephemeral_token(creator, recordings, capsys) -> None:
+    sample, consent = recordings
+    creator.create_profile("me", display_name="Me", sample=sample, consent=consent)
+
+    token = run(creator, capsys, "token", "me", "--uses", "1")
+
+    assert token["api_version"] == "v1alpha"
+    assert token["token"].startswith("auth_tokens/")

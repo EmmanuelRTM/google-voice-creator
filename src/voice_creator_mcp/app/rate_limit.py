@@ -37,6 +37,7 @@ class RateLimiter:
                 retry_after = math.ceil(calls[0] + self._window - now)
                 raise RateLimitError(
                     f"Rate limit of {self._max_calls} Gemini calls per {self._window:g}s exceeded; "
-                    f"retry in {retry_after}s"
+                    f"retry in {retry_after}s",
+                    retry_after=retry_after,
                 )
             calls.append(now)

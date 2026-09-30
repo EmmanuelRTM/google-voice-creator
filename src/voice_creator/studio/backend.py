@@ -12,6 +12,7 @@ from typing import Any, Protocol
 from voice_creator.config import Settings
 from voice_creator.dialogue.renderer import SpeechSynthesizer
 from voice_creator.live.runner import LiveConnector
+from voice_creator.live.tokens import LIVE_TOKEN_API_VERSION, TokenGateway
 from voice_creator.voices.catalog import VoiceCatalog
 
 
@@ -21,6 +22,8 @@ class Backend(Protocol):
     def synthesizer(self) -> SpeechSynthesizer: ...
 
     def live_connector(self) -> LiveConnector: ...
+
+    def token_gateway(self) -> TokenGateway: ...
 
 
 class GeminiBackend:
@@ -32,6 +35,15 @@ class GeminiBackend:
         from google import genai
 
         return genai.Client(api_key=self._settings.require_api_key())
+
+    @cached_property
+    def _alpha_client(self) -> Any:
+        from google import genai
+
+        return genai.Client(
+            api_key=self._settings.require_api_key(),
+            http_options={"api_version": LIVE_TOKEN_API_VERSION},
+        )
 
     def voice_catalog(self) -> VoiceCatalog:
         from voice_creator.gemini.voices_gateway import GeminiVoicesGateway
@@ -47,3 +59,8 @@ class GeminiBackend:
         from voice_creator.gemini.live_gateway import GeminiLiveConnector
 
         return GeminiLiveConnector(self._client)
+
+    def token_gateway(self) -> TokenGateway:
+        from voice_creator.gemini.token_gateway import GeminiTokenGateway
+
+        return GeminiTokenGateway(self._alpha_client)

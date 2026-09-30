@@ -17,6 +17,7 @@ from typing import Any
 
 from voice_creator.audio.quality import QualityReport
 from voice_creator.config import Settings
+from voice_creator.live.tokens import LiveToken
 from voice_creator.studio.backend import Backend, GeminiBackend
 from voice_creator.studio.dialogue_studio import DialogueStudio
 from voice_creator.studio.outputs import OutputWriter
@@ -67,6 +68,11 @@ class VoiceCreator:
             language_code=language_code,
             overwrite=overwrite,
         )
+
+    def issue_live_token(self, profile: str, **options: Any) -> LiveToken:
+        """Ephemeral Live token locked to `profile`'s voice, for a browser or mobile client.
+        Options match `DialogueStudio.issue_live_token`."""
+        return self.dialogue.issue_live_token(profile, **options)
 
 
 def _read(recording: Recording) -> bytes:

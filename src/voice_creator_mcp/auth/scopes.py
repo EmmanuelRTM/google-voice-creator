@@ -50,3 +50,15 @@ def required_scopes(tool: str) -> frozenset[str]:
 
 def missing_scopes(granted: Iterable[str], tool: str) -> frozenset[str]:
     return required_scopes(tool) - frozenset(granted)
+
+
+# HTTP API routes served next to the MCP endpoint, and the scopes they need on top of
+# the baseline. Both give a client the power to speak in the cloned voice.
+LIVE_TOKENS_PATH = "/v1/live-tokens"
+LIVE_RELAY_PATH = "/v1/live"
+API_ROUTE_SCOPES: Mapping[str, frozenset[str]] = MappingProxyType(
+    {
+        LIVE_TOKENS_PATH: frozenset({DIALOGUE_GENERATE}),
+        LIVE_RELAY_PATH: frozenset({DIALOGUE_GENERATE}),
+    }
+)

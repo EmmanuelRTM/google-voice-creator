@@ -123,3 +123,28 @@ async def test_live_dialogue_retries_with_consent_audio_when_signature_rejected(
 async def test_live_dialogue_validates_thinking_level_for_model(studio: DialogueStudio) -> None:
     with pytest.raises(LiveConfigError):
         await studio.live_dialogue("mario", ["Hi"], thinking_level="high")
+
+
+def test_live_token_uses_the_profile_voice_and_cached_signature(
+    studio: DialogueStudio, library: VoiceLibrary, backend: FakeBackend
+) -> None:
+    library.remember_consent_signature("mario", "sig-1")
+
+    token = studio.issue_live_token("mario", mode="verbatim", uses=2)
+
+    request = backend.tokens.requests[0]
+    config = request["live_connect_constraints"]["config"]
+    replicated = config["speech_config"]["voice_config"]["replicated_voice_config"]
+    assert replicated["voice_consent_signature"] == {"signature": "sig-1"}
+    assert "consent_audio" not in replicated
+    assert "exactly" in config["system_instruction"]
+    assert request["uses"] == 2
+    assert token.model == "gemini-3.8-live"
+
+
+def test_live_token_without_signature_carries_the_consent_recording(
+    studio: DialogueStudio, backend: FakeBackend
+) -> None:
+    studio.issue_live_token("mario")
+    config = backend.tokens.requests[0]["live_connect_constraints"]["config"]
+    assert "consent_audio" in config["speech_config"]["voice_config"]["replicated_voice_config"]

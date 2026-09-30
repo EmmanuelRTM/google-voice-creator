@@ -6,6 +6,7 @@ from mcp.server.mcpserver import MCPServer
 
 from voice_creator_mcp import __version__
 from voice_creator_mcp.app.workspace import WorkspaceProvider
+from voice_creator_mcp.server.api import register_api_routes
 from voice_creator_mcp.server.dialogue_tools import register_dialogue_tools
 from voice_creator_mcp.server.guard import ToolGuard
 from voice_creator_mcp.server.options import ServerOptions
@@ -40,4 +41,5 @@ def build_server(workspaces: WorkspaceProvider, options: ServerOptions | None = 
     register_voice_tools(server, guard)
     register_dialogue_tools(server, guard)
     register_render_resources(server, guard)
+    register_api_routes(server, guard)  # served only by the HTTP transport
     return server

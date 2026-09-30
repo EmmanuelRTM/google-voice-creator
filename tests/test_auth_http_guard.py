@@ -215,3 +215,25 @@ def test_legacy_batches_need_the_scopes_of_every_call(client: TestClient) -> Non
 def test_unparseable_bodies_are_left_to_the_server(client: TestClient) -> None:
     response = client.post("/mcp", headers={"Authorization": "Bearer reader"}, content=b"{not json")
     assert response.status_code == 200
+
+
+def test_api_routes_are_protected_with_their_own_scopes() -> None:
+    guard = OAuthResourceGuard(
+        echo_app,
+        verifier=FakeVerifier(),
+        resource_url=RESOURCE,
+        authorization_servers=[ISSUER],
+        mcp_path="/mcp",
+        scopes_supported=ALL_SCOPES,
+        baseline_scopes=BASELINE_SCOPES,
+        tool_scopes=TOOL_SCOPES,
+        api_scopes={"/v1/live-tokens": ["dialogue:generate"]},
+    )
+    client = TestClient(guard, base_url="https://voice.example.com")
+
+    anonymous = client.post("/v1/live-tokens", json={})
+    reader = client.post("/v1/live-tokens", headers={"Authorization": "Bearer reader"}, json={})
+
+    assert anonymous.status_code == 401
+    assert reader.status_code == 403
+    assert 'scope="dialogue:generate voice:read"' in reader.headers["www-authenticate"]

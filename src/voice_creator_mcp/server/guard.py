@@ -12,7 +12,8 @@ import functools
 import logging
 import re
 import time
-from collections.abc import Awaitable, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable
+from contextlib import asynccontextmanager
 from contextvars import ContextVar
 from pathlib import Path
 from typing import Any, TypeVar
@@ -106,36 +107,36 @@ class ToolGuard:
                 duration_ms=(time.perf_counter() - started) * 1000,
             )
 
-    async def _call(
-        self,
-        name: str,
-        needed: frozenset[str],
-        fn: Callable[..., Awaitable[R]],
-        args: tuple[Any, ...],
-        kwargs: dict[str, Any],
-    ) -> R:
+    @asynccontextmanager
+    async def guarded(
+        self, name: str, needed: frozenset[str], *, costly: bool
+    ) -> AsyncIterator[Workspace]:
+        """Authorize, rate-limit, bind the caller's workspace and audit one operation.
+
+        Domain errors propagate unchanged so each interface (MCP tool, HTTP route,
+        WebSocket) can translate them in its own terms.
+        """
         principal = current_principal()
         started = time.perf_counter()
         outcome: Outcome = "error"
         error: str | None = None
         try:
             self._check_scopes(principal, needed, name)
-            if name in COSTLY_TOOLS and self.options.rate_limiter:
+            if costly and self.options.rate_limiter:
                 self.options.rate_limiter.acquire(principal.workspace_id if principal else "local")
-            token = _workspace.set(self._workspaces.get(principal))
+            workspace = self._workspaces.get(principal)
+            token = _workspace.set(workspace)
             try:
-                result = await fn(*args, **kwargs)
+                yield workspace
             finally:
                 _workspace.reset(token)
             outcome = "ok"
-            return result
-        except (VoiceCreatorError, ValueError) as exc:
-            error = type(exc).__name__
-            if isinstance(exc, AuthorizationError):
-                outcome = "denied"
-            elif isinstance(exc, RateLimitError):
-                outcome = "rate_limited"
-            raise ToolError(str(exc)) from exc
+        except AuthorizationError as exc:
+            outcome, error = "denied", type(exc).__name__
+            raise
+        except RateLimitError as exc:
+            outcome, error = "rate_limited", type(exc).__name__
+            raise
         except Exception as exc:
             error = type(exc).__name__
             raise
@@ -147,6 +148,20 @@ class ToolGuard:
                 duration_ms=(time.perf_counter() - started) * 1000,
                 error=error,
             )
+
+    async def _call(
+        self,
+        name: str,
+        needed: frozenset[str],
+        fn: Callable[..., Awaitable[R]],
+        args: tuple[Any, ...],
+        kwargs: dict[str, Any],
+    ) -> R:
+        try:
+            async with self.guarded(name, needed, costly=name in COSTLY_TOOLS):
+                return await fn(*args, **kwargs)
+        except (VoiceCreatorError, ValueError) as exc:
+            raise ToolError(str(exc)) from exc
 
     def _check_scopes(
         self, principal: Principal | None, needed: frozenset[str], action: str

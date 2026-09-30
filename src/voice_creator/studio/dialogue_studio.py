@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import asdict, replace
+from datetime import timedelta
 from typing import Any
 
 from voice_creator.dialogue.renderer import DialogueRenderer, ProgressCallback
@@ -12,6 +13,7 @@ from voice_creator.errors import LiveConnectionError
 from voice_creator.live.config import LiveSessionOptions, ReplicatedVoice, build_live_config
 from voice_creator.live.instructions import LiveMode, build_system_instruction
 from voice_creator.live.runner import LiveDialogueResult, LiveDialogueRunner, TurnCallback
+from voice_creator.live.tokens import LiveToken, LiveTokenIssuer
 from voice_creator.studio.backend import Backend
 from voice_creator.studio.outputs import OutputWriter, WrittenOutput
 from voice_creator.studio.voice_library import VoiceLibrary
@@ -81,15 +83,8 @@ class DialogueStudio:
         gap_ms: int = 400,
         on_turn: TurnCallback | None = None,
     ) -> dict[str, Any]:
-        voice_profile = self._library.profile(profile)
-        options = LiveSessionOptions(
-            model=model or self._default_live_model,
-            voice=self._library.live_voice(profile),
-            system_instruction=build_system_instruction(
-                mode, persona=persona or voice_profile.display_name, extra=extra_instructions
-            ),
-            thinking_level=thinking_level,
-            language_code=language_code or voice_profile.language_code,
+        options = self._live_options(
+            profile, mode, persona, model, thinking_level, language_code, extra_instructions
         )
         build_live_config(options)  # fail fast on model/option mismatches
 
@@ -109,6 +104,51 @@ class DialogueStudio:
             "turns": [asdict(turn) for turn in result.turns],
             "warnings": [*warnings, *result.warnings],
         }
+
+    def issue_live_token(
+        self,
+        profile: str,
+        *,
+        mode: LiveMode = "improvise",
+        persona: str | None = None,
+        model: str | None = None,
+        thinking_level: str | None = None,
+        language_code: str | None = None,
+        extra_instructions: str | None = None,
+        uses: int = 1,
+        ttl_minutes: int = 30,
+    ) -> LiveToken:
+        """Mint an ephemeral Live token locked to this profile's voice and instructions.
+
+        Uses the cached consent signature when there is one (a much smaller token);
+        otherwise the consent recording travels in the locked config.
+        """
+        options = self._live_options(
+            profile, mode, persona, model, thinking_level, language_code, extra_instructions
+        )
+        issuer = LiveTokenIssuer(self._backend.token_gateway())
+        return issuer.issue(options, uses=uses, ttl=timedelta(minutes=ttl_minutes))
+
+    def _live_options(
+        self,
+        profile: str,
+        mode: LiveMode,
+        persona: str | None,
+        model: str | None,
+        thinking_level: str | None,
+        language_code: str | None,
+        extra_instructions: str | None,
+    ) -> LiveSessionOptions:
+        voice_profile = self._library.profile(profile)
+        return LiveSessionOptions(
+            model=model or self._default_live_model,
+            voice=self._library.live_voice(profile),
+            system_instruction=build_system_instruction(
+                mode, persona=persona or voice_profile.display_name, extra=extra_instructions
+            ),
+            thinking_level=thinking_level,
+            language_code=language_code or voice_profile.language_code,
+        )
 
     async def _run_with_consent_fallback(
         self,

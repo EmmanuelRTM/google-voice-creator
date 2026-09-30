@@ -42,6 +42,7 @@ class OAuthResourceGuard:
         scopes_supported: Sequence[str],
         baseline_scopes: Iterable[str],
         tool_scopes: Mapping[str, Iterable[str]],
+        api_scopes: Mapping[str, Iterable[str]] | None = None,
         resource_name: str | None = None,
         documentation_url: str | None = None,
         max_inspected_body: int = 12 * 1024 * 1024,
@@ -53,6 +54,9 @@ class OAuthResourceGuard:
         self._baseline = frozenset(baseline_scopes)
         self._tool_scopes = {name: frozenset(scopes) for name, scopes in tool_scopes.items()}
         self._all_tool_scopes = frozenset().union(*self._tool_scopes.values())
+        self._api_scopes = {
+            path.rstrip("/"): frozenset(scopes) for path, scopes in (api_scopes or {}).items()
+        }
         self._max_inspected_body = max_inspected_body
         self._metadata_url = str(build_resource_metadata_url(AnyHttpUrl(resource_url)))
         self._metadata_paths = {urlsplit(self._metadata_url).path, ROOT_METADATA_PATH}
@@ -95,8 +99,10 @@ class OAuthResourceGuard:
             )
             return
 
-        needed = set(self._baseline) | self._tool_scopes_for(headers)
-        if self._needs_body_inspection(scope, headers, access.scopes):
+        needed = set(self._baseline) | self._api_scopes.get(path.rstrip("/"), frozenset())
+        if self._is_mcp(path):
+            needed |= self._tool_scopes_for(headers)
+        if self._is_mcp(path) and self._needs_body_inspection(scope, headers, access.scopes):
             body, receive = await _buffer_body(receive, self._max_inspected_body)
             needed |= self._scopes_in_body(body)
         if needed - set(access.scopes):
@@ -152,6 +158,9 @@ class OAuthResourceGuard:
         return frozenset(scopes)
 
     def _protects(self, path: str) -> bool:
+        return self._is_mcp(path) or path.rstrip("/") in self._api_scopes
+
+    def _is_mcp(self, path: str) -> bool:
         return path == self._mcp_path or path.startswith(f"{self._mcp_path}/")
 
     async def _send_metadata(self, scope: Scope, send: Send) -> None:

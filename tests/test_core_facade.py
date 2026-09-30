@@ -50,3 +50,14 @@ def test_facade_accepts_paths_or_bytes(creator: VoiceCreator, tmp_path: Path) ->
 def test_facade_renders_dialogue(creator: VoiceCreator) -> None:
     result = creator.dialogue.render_dialogue("Ana: Hola.", {"Ana": "Kore"}, output_name="t")
     assert Path(result["audio_path"]).exists()
+
+
+def test_facade_issues_live_tokens(creator: VoiceCreator) -> None:
+    creator.create_profile(
+        "me",
+        display_name="Me",
+        sample=wav_bytes(make_tone(15.0)),
+        consent=wav_bytes(make_tone(6.0)),
+    )
+    token = creator.issue_live_token("me", ttl_minutes=5)
+    assert token.token.startswith("auth_tokens/")

@@ -55,3 +55,7 @@ class PathNotAllowedError(VoiceCreatorError):
 
 class RateLimitError(VoiceCreatorError):
     """Too many costly calls in the current window."""
+
+    def __init__(self, message: str, *, retry_after: int = 60) -> None:
+        super().__init__(message)
+        self.retry_after = retry_after
