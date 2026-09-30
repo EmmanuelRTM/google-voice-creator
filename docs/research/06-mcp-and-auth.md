@@ -84,7 +84,7 @@ actionable errors; progress for long operations.
 | Least-privilege scopes grouped by risk; unknown tools denied | Security | `auth/scopes.py` |
 | Step-up `403 insufficient_scope` per tool, from `Mcp-Method`/`Mcp-Name`, with a JSON-RPC body fallback for 2025-11-25 clients | Spec | `OAuthResourceGuard._tool_scopes_for` / `_scopes_in_body` |
 | Defense in depth: every tool re-checks its scopes from the validated token | Security | `server/guard.py` (`ToolGuard._check_scopes`) |
-| No token passthrough: Gemini uses the server's own credential | Spec | `server/composition.py`, `app/backend.py` |
+| No token passthrough: Gemini uses the server's own credential | Spec | `server/composition.py`, `voice_creator/studio/backend.py` |
 | A private workspace per principal (`sha256(iss, sub)`), `0700`/`0600` | Privacy | `app/workspace.py`, `voices/profiles.py` |
 | Remote servers never read server paths (base64 only) and never return them | Security | `app/inputs.py` (`PathPolicy`), `ServerOptions.redact_paths` |
 | Local path confinement (optional) that resolves symlinks before checking | Security | `VOICE_CREATOR_ALLOWED_DIRS` |
@@ -97,6 +97,10 @@ actionable errors; progress for long operations.
 | Logs to stderr only, since stdout is the stdio channel | MCP | `__main__.py` |
 | `voice_`-prefixed tools, titles, annotations, `outputSchema`, progress, resources for renders | MCP builder | `server/*.py` |
 | Legacy Gemini standard keys flagged; key-file permissions checked | Google | `Settings.credential_warnings()` |
+| Scopes read from `scope` and `scp` claims (configurable), granted as their union | IdP interop | `VOICE_CREATOR_OAUTH_SCOPE_CLAIMS`, `parse_scopes` |
+| Ephemeral Live tokens only over the HTTP API (never MCP tool results), single-use, short-lived, voice locked, `no-store` | Google, Security | `server/api.py`, `voice_creator/live/tokens.py` |
+| WebSocket handshakes verified by the same guard (close `1008`); cross-site `Origin` rejected (CSWSH) | Security | `OAuthResourceGuard._guard_websocket`, `server/realtime_ws.py` |
+| Verification reports redact keys, bearer tokens and Live tokens | Security | `voice_creator/diagnostics/report.py` |
 
 ## 4. Scopes
 

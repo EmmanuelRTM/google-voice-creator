@@ -56,6 +56,11 @@
 
 ## Open questions (verify with a real API key)
 
+Run `uv run voice-creator verify --sample me.wav --consent consent.wav --replicate` (or
+`scripts/verify_gemini.py` for the MCP checks too) to answer questions 1, 3, 4 and 6 for
+your account; [07-google-integration.md](07-google-integration.md#10-what-still-needs-your-key)
+maps each question to a check.
+
 1. **Voices API IDs in Live.** The forum says they don't work with `gemini-3.8-live` yet.
    Watch the changelog; when they do, the Live path can drop the inline sample.
 2. **Billing of the inline voice sample.** It isn't documented whether the per-session
