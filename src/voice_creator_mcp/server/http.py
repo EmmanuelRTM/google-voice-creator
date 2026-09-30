@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Awaitable, Callable
 
 from mcp.server.auth.provider import TokenVerifier
-from starlette.types import ASGIApp
+from starlette.types import ASGIApp, Receive, Scope, Send
+from starlette.websockets import WebSocket
 
 from voice_creator.config import Settings
 from voice_creator.studio.backend import Backend
@@ -20,9 +22,11 @@ from voice_creator_mcp.auth.scopes import (
     ALL_SCOPES,
     API_ROUTE_SCOPES,
     BASELINE_SCOPES,
+    LIVE_RELAY_PATH,
     TOOL_SCOPES,
 )
-from voice_creator_mcp.server.composition import create_server
+from voice_creator_mcp.server.composition import create_components
+from voice_creator_mcp.server.realtime_ws import realtime_endpoint
 
 logger = logging.getLogger(__name__)
 
@@ -39,13 +43,19 @@ def build_http_app(
 ) -> ASGIApp:
     http.validate()
     oauth = http.oauth
-    server = create_server(settings, remote=True, authenticated=oauth is not None, backend=backend)
-    app = server.streamable_http_app(
+    server, guard = create_components(
+        settings, remote=True, authenticated=oauth is not None, backend=backend
+    )
+    security = http.transport_security()
+    mcp_app = server.streamable_http_app(
         streamable_http_path=http.path,
         stateless_http=True,
-        transport_security=http.transport_security(),
+        transport_security=security,
         host=http.host,
         max_request_body_size=MAX_REQUEST_BODY_BYTES,
+    )
+    app = with_realtime_route(
+        mcp_app, realtime_endpoint(guard, allowed_origins=security.allowed_origins)
     )
     if oauth is None:
         logger.warning(
@@ -65,6 +75,18 @@ def build_http_app(
         resource_name=RESOURCE_NAME,
         documentation_url=oauth.documentation_url,
     )
+
+
+def with_realtime_route(app: ASGIApp, endpoint: Callable[[WebSocket], Awaitable[None]]) -> ASGIApp:
+    """Serve the `/v1/live` WebSocket next to the MCP app (which owns the lifespan)."""
+
+    async def dispatch(scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] == "websocket" and scope["path"].rstrip("/") == LIVE_RELAY_PATH:
+            await endpoint(WebSocket(scope, receive, send))
+            return
+        await app(scope, receive, send)
+
+    return dispatch
 
 
 def build_jwt_verifier(oauth: OAuthConfig) -> JwtTokenVerifier:

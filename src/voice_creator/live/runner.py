@@ -31,11 +31,13 @@ class LiveEvent:
 
     audio: bytes | None = None
     audio_mime_type: str | None = None
+    input_transcript: str | None = None
     output_transcript: str | None = None
     turn_complete: bool = False
     interaction_status: str | None = None
     interrupted: bool = False
     go_away: bool = False
+    resumption_handle: str | None = None
 
 
 class LiveSession(Protocol):

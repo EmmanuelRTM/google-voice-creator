@@ -67,21 +67,26 @@ def register_api_routes(server: MCPServer, guard: ToolGuard) -> None:
         return JSONResponse(token.to_dict(), headers=NO_STORE)
 
 
+def classify(exc: VoiceCreatorError) -> tuple[int, str, str]:
+    """(HTTP status, error code, safe description) for a domain error."""
+    if isinstance(exc, AuthorizationError):
+        return 403, "insufficient_scope", str(exc)
+    if isinstance(exc, RateLimitError):
+        return 429, "rate_limited", str(exc)
+    if isinstance(exc, ConfigError):
+        return 503, "server_misconfigured", "The server is not configured for Gemini"
+    if isinstance(exc, ProfileError) and "not found" in str(exc):
+        return 404, "not_found", str(exc)
+    return 400, "invalid_request", str(exc)
+
+
 def error_for(exc: VoiceCreatorError) -> JSONResponse:
     """Map domain errors to HTTP without leaking internals."""
-    if isinstance(exc, AuthorizationError):
-        return error_response(403, "insufficient_scope", str(exc))
+    status, code, description = classify(exc)
+    response = error_response(status, code, description)
     if isinstance(exc, RateLimitError):
-        response = error_response(429, "rate_limited", str(exc))
         response.headers["Retry-After"] = str(exc.retry_after)
-        return response
-    if isinstance(exc, ConfigError):
-        return error_response(
-            503, "server_misconfigured", "The server is not configured for Gemini"
-        )
-    if isinstance(exc, ProfileError) and "not found" in str(exc):
-        return error_response(404, "not_found", str(exc))
-    return error_response(400, "invalid_request", str(exc))
+    return response
 
 
 def error_response(status: int, error: str, description: str) -> JSONResponse:

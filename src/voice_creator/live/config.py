@@ -10,7 +10,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Literal
 
 from voice_creator.errors import LiveConfigError
 
@@ -18,6 +18,11 @@ GEMINI_38_LIVE = "gemini-3.8-live"
 GEMINI_38_LIVE_EXTENDED_THINKING = "gemini-3.8-live-extended-thinking"
 EXTENDED_THINKING_LEVELS = ("low", "medium", "high")
 VOICE_SAMPLE_MIME_TYPE = "audio/wav"
+
+TurnDetection = Literal["vad", "manual"]
+"""`vad`: the server detects speech (default). `manual`: push-to-talk; the client
+sends activity_start/activity_end, which avoids 3.8's end-of-turn detection issues
+with clients that stream digital silence."""
 
 
 @dataclass(frozen=True)
@@ -54,6 +59,11 @@ class LiveSessionOptions:
     thinking_level: str | None = None
     language_code: str | None = None
     output_transcription: bool = True
+    input_transcription: bool = False
+    turn_detection: TurnDetection | None = None
+    resumable: bool = False
+    resumption_handle: str | None = None
+    compress_context: bool = False
 
 
 def build_live_config(options: LiveSessionOptions) -> dict[str, Any]:
@@ -69,6 +79,24 @@ def build_live_config(options: LiveSessionOptions) -> dict[str, Any]:
         config["thinking_config"] = {"thinking_level": level}
     if options.output_transcription:
         config["output_audio_transcription"] = {}
+    config.update(_realtime_config(options))
+    return config
+
+
+def _realtime_config(options: LiveSessionOptions) -> dict[str, Any]:
+    """Session-management settings Google recommends for long, streamed conversations."""
+    config: dict[str, Any] = {}
+    if options.input_transcription:
+        config["input_audio_transcription"] = {}
+    if options.turn_detection == "manual":
+        config["realtime_input_config"] = {"automatic_activity_detection": {"disabled": True}}
+    if options.resumption_handle:
+        config["session_resumption"] = {"handle": options.resumption_handle}
+    elif options.resumable:
+        config["session_resumption"] = {}
+    if options.compress_context:
+        # Sliding-window compression lifts the ~15 min audio session limit.
+        config["context_window_compression"] = {"sliding_window": {}}
     return config
 
 

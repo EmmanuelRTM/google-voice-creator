@@ -104,3 +104,46 @@ def test_unknown_models_pass_thinking_level_through() -> None:
 def test_transcription_can_be_disabled() -> None:
     config = build_live_config(LiveSessionOptions(output_transcription=False))
     assert "output_audio_transcription" not in config
+
+
+def test_realtime_options_map_to_live_config() -> None:
+    config = build_live_config(
+        LiveSessionOptions(
+            input_transcription=True,
+            turn_detection="manual",
+            resumable=True,
+            compress_context=True,
+        )
+    )
+
+    assert config["input_audio_transcription"] == {}
+    assert config["realtime_input_config"] == {"automatic_activity_detection": {"disabled": True}}
+    assert config["session_resumption"] == {}
+    assert config["context_window_compression"] == {"sliding_window": {}}
+
+
+def test_resumption_handle_resumes_a_session() -> None:
+    config = build_live_config(LiveSessionOptions(resumption_handle="h-1"))
+    assert config["session_resumption"] == {"handle": "h-1"}
+
+
+def test_default_turn_detection_uses_server_vad() -> None:
+    config = build_live_config(LiveSessionOptions(turn_detection="vad"))
+    assert "realtime_input_config" not in config
+
+
+def test_realtime_config_is_valid_for_the_sdk() -> None:
+    from google.genai import types
+
+    config = build_live_config(
+        LiveSessionOptions(
+            voice=VOICE,
+            input_transcription=True,
+            turn_detection="manual",
+            resumption_handle="h",
+            compress_context=True,
+        )
+    )
+    parsed = types.LiveConnectConfig(**config)
+    assert parsed.session_resumption.handle == "h"
+    assert parsed.realtime_input_config.automatic_activity_detection.disabled is True

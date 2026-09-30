@@ -140,6 +140,7 @@ def test_tts_without_audio_raises() -> None:
 def server_message(**server_content: Any) -> Any:
     defaults = dict(
         model_turn=None,
+        input_transcription=None,
         output_transcription=None,
         interrupted=None,
         turn_complete=None,
@@ -206,3 +207,53 @@ async def test_live_connector_wraps_the_sdk_session() -> None:
     assert captured == {"model": "gemini-3.8-live", "config": {"a": 1}}
     assert sdk_session.sent == ["hello"]
     assert events == [LiveEvent(turn_complete=True)]
+
+
+def test_message_to_events_maps_input_transcripts_and_resumption() -> None:
+    message = server_message(input_transcription=NS(text="Hola"))
+    message.session_resumption_update = NS(new_handle="h-2", resumable=True)
+
+    assert message_to_events(message) == [
+        LiveEvent(input_transcript="Hola"),
+        LiveEvent(resumption_handle="h-2"),
+    ]
+
+
+def test_non_resumable_updates_are_ignored() -> None:
+    message = NS(
+        server_content=None,
+        go_away=None,
+        session_resumption_update=NS(new_handle="", resumable=False),
+    )
+    assert message_to_events(message) == []
+
+
+class RealtimeSdkSession(FakeSdkSession):
+    def __init__(self) -> None:
+        super().__init__()
+        self.realtime: list[dict] = []
+
+    async def send_realtime_input(self, **kwargs) -> None:  # type: ignore[override]
+        self.realtime.append(kwargs)
+
+
+async def test_live_session_streams_audio_and_activity_signals() -> None:
+    sdk_session = RealtimeSdkSession()
+
+    @asynccontextmanager
+    async def connect(*, model: str, config: dict[str, Any]):
+        yield sdk_session
+
+    async with GeminiLiveConnector(NS(aio=NS(live=NS(connect=connect)))).connect("m", {}) as s:
+        await s.send_audio(b"\x00\x01", 16_000)
+        await s.send_activity_start()
+        await s.send_activity_end()
+        await s.send_audio_stream_end()
+
+    audio = sdk_session.realtime[0]["audio"]
+    assert (audio.data, audio.mime_type) == (b"\x00\x01", "audio/pcm;rate=16000")
+    assert sdk_session.realtime[1:] == [
+        {"activity_start": {}},
+        {"activity_end": {}},
+        {"audio_stream_end": True},
+    ]

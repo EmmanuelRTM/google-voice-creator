@@ -10,8 +10,14 @@ from typing import Any
 from voice_creator.dialogue.renderer import DialogueRenderer, ProgressCallback
 from voice_creator.dialogue.script import parse_script, speakers
 from voice_creator.errors import LiveConnectionError
-from voice_creator.live.config import LiveSessionOptions, ReplicatedVoice, build_live_config
+from voice_creator.live.config import (
+    LiveSessionOptions,
+    ReplicatedVoice,
+    TurnDetection,
+    build_live_config,
+)
 from voice_creator.live.instructions import LiveMode, build_system_instruction
+from voice_creator.live.realtime import ClientChannel, RealtimeBridge
 from voice_creator.live.runner import LiveDialogueResult, LiveDialogueRunner, TurnCallback
 from voice_creator.live.tokens import LiveToken, LiveTokenIssuer
 from voice_creator.studio.backend import Backend
@@ -105,6 +111,48 @@ class DialogueStudio:
             "warnings": [*warnings, *result.warnings],
         }
 
+    async def realtime_conversation(
+        self,
+        profile: str,
+        client: ClientChannel,
+        *,
+        mode: LiveMode = "improvise",
+        persona: str | None = None,
+        model: str | None = None,
+        thinking_level: str | None = None,
+        language_code: str | None = None,
+        extra_instructions: str | None = None,
+        turn_detection: TurnDetection | None = None,
+        input_transcription: bool = True,
+        max_minutes: int = 15,
+    ) -> dict[str, Any]:
+        """Relay a live, streamed conversation between `client` and Gemini in the profile's
+        voice (server-to-server), with resumption and context compression enabled."""
+        options = replace(
+            self._live_options(
+                profile, mode, persona, model, thinking_level, language_code, extra_instructions
+            ),
+            input_transcription=input_transcription,
+            turn_detection=turn_detection,
+            compress_context=True,
+        )
+        build_live_config(options)  # fail fast on model/option mismatches
+        bridge = RealtimeBridge(self._backend.live_connector(), max_duration_s=max_minutes * 60)
+        warnings: list[str] = []
+        try:
+            summary = await bridge.run(options, client)
+        except LiveConnectionError:
+            if not _used_signature(options):
+                raise
+            self._library.forget_consent_signature(profile)
+            warnings.append(SIGNATURE_REJECTED)
+            summary = await bridge.run(
+                replace(options, voice=self._library.live_voice(profile)), client
+            )
+        if summary.consent_signature:
+            self._library.remember_consent_signature(profile, summary.consent_signature)
+        return {**summary.to_dict(), "warnings": warnings}
+
     def issue_live_token(
         self,
         profile: str,
@@ -165,13 +213,20 @@ class DialogueStudio:
         try:
             return await runner.run(options, prompts, gap_ms=gap_ms, on_turn=on_turn), []
         except LiveConnectionError:
-            voice = options.voice
-            if not (isinstance(voice, ReplicatedVoice) and voice.consent_signature):
+            if not _used_signature(options):
                 raise
         self._library.forget_consent_signature(profile)
         retry = replace(options, voice=self._library.live_voice(profile))
-        warning = "cached consent signature was rejected; re-verified with the consent recording"
-        return await runner.run(retry, prompts, gap_ms=gap_ms, on_turn=on_turn), [warning]
+        return await runner.run(retry, prompts, gap_ms=gap_ms, on_turn=on_turn), [
+            SIGNATURE_REJECTED
+        ]
+
+
+SIGNATURE_REJECTED = "cached consent signature was rejected; re-verified with the consent recording"
+
+
+def _used_signature(options: LiveSessionOptions) -> bool:
+    return isinstance(options.voice, ReplicatedVoice) and bool(options.voice.consent_signature)
 
 
 def _paths(written: WrittenOutput) -> dict[str, str]:

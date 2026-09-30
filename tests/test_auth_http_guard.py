@@ -237,3 +237,37 @@ def test_api_routes_are_protected_with_their_own_scopes() -> None:
     assert anonymous.status_code == 401
     assert reader.status_code == 403
     assert 'scope="dialogue:generate voice:read"' in reader.headers["www-authenticate"]
+
+
+def test_websocket_handshakes_on_protected_paths_are_authenticated() -> None:
+    from starlette.websockets import WebSocketDisconnect
+
+    async def ws_app(scope, receive, send):
+        await receive()
+        await send({"type": "websocket.accept"})
+        await send({"type": "websocket.send", "text": get_access_token().subject})
+        await send({"type": "websocket.close", "code": 1000})
+
+    guard = OAuthResourceGuard(
+        ws_app,
+        verifier=FakeVerifier(),
+        resource_url=RESOURCE,
+        authorization_servers=[ISSUER],
+        mcp_path="/mcp",
+        scopes_supported=ALL_SCOPES,
+        baseline_scopes=BASELINE_SCOPES,
+        tool_scopes=TOOL_SCOPES,
+        api_scopes={"/v1/live": ["dialogue:generate"]},
+    )
+    client = TestClient(guard, base_url="https://voice.example.com")
+
+    with pytest.raises(WebSocketDisconnect) as closed, client.websocket_connect("/v1/live"):
+        pass
+    assert closed.value.code == 1008
+
+    with (
+        pytest.raises(WebSocketDisconnect) as closed,
+        client.websocket_connect("/v1/live", headers={"Authorization": "Bearer reader"}),
+    ):
+        pass
+    assert closed.value.code == 1008

@@ -148,3 +148,47 @@ def test_live_token_without_signature_carries_the_consent_recording(
     studio.issue_live_token("mario")
     config = backend.tokens.requests[0]["live_connect_constraints"]["config"]
     assert "consent_audio" in config["speech_config"]["voice_config"]["replicated_voice_config"]
+
+
+async def test_realtime_conversation_remembers_the_consent_signature(
+    studio: DialogueStudio, library: VoiceLibrary, backend: FakeBackend
+) -> None:
+    from voice_creator.live.realtime import ClientMessage
+
+    from fakes import FakeClientChannel, FakeRealtimeConnector, FakeRealtimeSession
+
+    backend.connector = FakeRealtimeConnector([FakeRealtimeSession(consent_signature="sig-rt")])
+
+    summary = await studio.realtime_conversation(
+        "mario", FakeClientChannel([ClientMessage("stop")]), turn_detection="manual"
+    )
+
+    _model, config = backend.connector.connections[0]
+    assert config["realtime_input_config"] == {"automatic_activity_detection": {"disabled": True}}
+    assert config["context_window_compression"] == {"sliding_window": {}}
+    assert config["input_audio_transcription"] == {}
+    assert summary["ended"] == "client"
+    assert library.live_voice("mario").consent_signature == "sig-rt"
+
+
+async def test_realtime_conversation_retries_with_consent_audio(
+    studio: DialogueStudio, library: VoiceLibrary, backend: FakeBackend
+) -> None:
+    from voice_creator.live.realtime import ClientMessage
+
+    from fakes import FakeClientChannel, FakeRealtimeConnector, FakeRealtimeSession
+
+    library.remember_consent_signature("mario", "expired")
+    backend.connector = FakeRealtimeConnector(
+        [FakeRealtimeSession(consent_signature="fresh")], reject_signatures=True
+    )
+
+    summary = await studio.realtime_conversation(
+        "mario", FakeClientChannel([ClientMessage("stop")])
+    )
+
+    assert len(backend.connector.connections) == 2
+    assert summary["warnings"] == [
+        "cached consent signature was rejected; re-verified with the consent recording"
+    ]
+    assert library.live_voice("mario").consent_signature == "fresh"

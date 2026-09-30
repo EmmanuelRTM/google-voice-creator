@@ -9,7 +9,8 @@ from voice_creator.studio.backend import Backend, GeminiBackend
 from voice_creator_mcp.app.inputs import PathPolicy
 from voice_creator_mcp.app.rate_limit import RateLimiter
 from voice_creator_mcp.app.workspace import WorkspaceProvider
-from voice_creator_mcp.server.core import build_server
+from voice_creator_mcp.server.core import assemble_server
+from voice_creator_mcp.server.guard import ToolGuard
 from voice_creator_mcp.server.options import ServerOptions
 
 DEFAULT_REMOTE_RATE_LIMIT_PER_MINUTE = 30
@@ -22,6 +23,19 @@ def create_server(
     authenticated: bool = False,
     backend: Backend | None = None,
 ) -> MCPServer:
+    server, _guard = create_components(
+        settings, remote=remote, authenticated=authenticated, backend=backend
+    )
+    return server
+
+
+def create_components(
+    settings: Settings | None = None,
+    *,
+    remote: bool = False,
+    authenticated: bool = False,
+    backend: Backend | None = None,
+) -> tuple[MCPServer, ToolGuard]:
     """Build the server for a deployment.
 
     * Local (stdio): one trusted user, file paths allowed (optionally confined by
@@ -54,4 +68,5 @@ def create_server(
         path_policy=PathPolicy(roots),
         rate_limiter=RateLimiter(limit) if limit else None,
     )
-    return build_server(workspaces, options)
+    guard = ToolGuard(workspaces, options)
+    return assemble_server(guard), guard

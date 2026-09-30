@@ -10,6 +10,8 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Any
 
+from google.genai import types
+
 from voice_creator.live.runner import LiveEvent
 
 
@@ -36,6 +38,20 @@ class _Session:
     async def send_text(self, text: str) -> None:
         await self._session.send_realtime_input(text=text)
 
+    async def send_audio(self, pcm: bytes, sample_rate: int) -> None:
+        await self._session.send_realtime_input(
+            audio=types.Blob(data=pcm, mime_type=f"audio/pcm;rate={sample_rate}")
+        )
+
+    async def send_activity_start(self) -> None:
+        await self._session.send_realtime_input(activity_start={})
+
+    async def send_activity_end(self) -> None:
+        await self._session.send_realtime_input(activity_end={})
+
+    async def send_audio_stream_end(self) -> None:
+        await self._session.send_realtime_input(audio_stream_end=True)
+
     async def receive(self) -> AsyncIterator[LiveEvent]:
         async for message in self._session.receive():
             for event in message_to_events(message):
@@ -52,6 +68,9 @@ def message_to_events(message: Any) -> list[LiveEvent]:
             blob = getattr(part, "inline_data", None)
             if blob is not None and blob.data:
                 events.append(LiveEvent(audio=blob.data, audio_mime_type=blob.mime_type))
+        heard = getattr(content, "input_transcription", None)
+        if heard is not None and heard.text:
+            events.append(LiveEvent(input_transcript=heard.text))
         transcription = getattr(content, "output_transcription", None)
         if transcription is not None and transcription.text:
             events.append(LiveEvent(output_transcript=transcription.text))
@@ -62,6 +81,9 @@ def message_to_events(message: Any) -> list[LiveEvent]:
             events.append(
                 LiveEvent(turn_complete=bool(content.turn_complete), interaction_status=status)
             )
+    update = getattr(message, "session_resumption_update", None)
+    if update is not None and update.resumable and update.new_handle:
+        events.append(LiveEvent(resumption_handle=update.new_handle))
     if getattr(message, "go_away", None) is not None:
         events.append(LiveEvent(go_away=True))
     return events

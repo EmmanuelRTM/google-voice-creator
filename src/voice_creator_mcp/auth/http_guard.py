@@ -76,10 +76,13 @@ class OAuthResourceGuard:
         ).encode()
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        if scope["type"] != "http":
+        if scope["type"] not in ("http", "websocket"):
             await self._app(scope, receive, send)
             return
         path = scope["path"]
+        if scope["type"] == "websocket":
+            await self._guard_websocket(scope, receive, send)
+            return
         if path in self._metadata_paths:
             await self._send_metadata(scope, send)
             return
@@ -115,6 +118,24 @@ class OAuthResourceGuard:
             )
             return
 
+        scope["user"] = AuthenticatedUser(access)
+        scope["auth"] = AuthCredentials(access.scopes)
+        await self._authenticated_app(scope, receive, send)
+
+    async def _guard_websocket(self, scope: Scope, receive: Receive, send: Send) -> None:
+        """WebSocket handshakes carry the bearer token in the Authorization header too
+        (server-to-server clients); failures close with 1008 (policy violation)."""
+        path = scope["path"]
+        if not self._protects(path):
+            await self._app(scope, receive, send)
+            return
+        token = _bearer_token(Headers(scope=scope).get("authorization"))
+        access = await self._verifier.verify_token(token) if token else None
+        needed = set(self._baseline) | self._api_scopes.get(path.rstrip("/"), frozenset())
+        if access is None or needed - set(access.scopes):
+            await receive()  # websocket.connect
+            await send({"type": "websocket.close", "code": 1008, "reason": "unauthorized"})
+            return
         scope["user"] = AuthenticatedUser(access)
         scope["auth"] = AuthCredentials(access.scopes)
         await self._authenticated_app(scope, receive, send)

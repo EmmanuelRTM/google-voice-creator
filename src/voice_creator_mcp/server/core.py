@@ -36,7 +36,10 @@ Only use a voice with its owner's documented consent.
 
 
 def build_server(workspaces: WorkspaceProvider, options: ServerOptions | None = None) -> MCPServer:
-    guard = ToolGuard(workspaces, options or ServerOptions())
+    return assemble_server(ToolGuard(workspaces, options or ServerOptions()))
+
+
+def assemble_server(guard: ToolGuard) -> MCPServer:
     server = MCPServer(name=SERVER_NAME, instructions=INSTRUCTIONS, version=__version__)
     register_voice_tools(server, guard)
     register_dialogue_tools(server, guard)
