@@ -6,7 +6,7 @@ Line-by-line synthesis works for any number of speakers and any voice type
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -15,6 +15,9 @@ from voice_creator_mcp.dialogue.script import DialogueLine, speakers, strip_voca
 from voice_creator_mcp.errors import CastError
 
 MAX_GAP_MS = 10_000
+
+ProgressCallback = Callable[[int, int], None]
+"""Called with (lines done, total lines) after each synthesized line."""
 
 
 class SpeechSynthesizer(Protocol):
@@ -55,6 +58,7 @@ class DialogueRenderer:
         *,
         gap_ms: int = 300,
         language: str | None = None,
+        on_progress: ProgressCallback | None = None,
     ) -> RenderedDialogue:
         if not lines:
             raise CastError("Dialogue has no lines to render")
@@ -62,12 +66,15 @@ class DialogueRenderer:
             raise ValueError(f"gap_ms must be between 0 and {MAX_GAP_MS}")
         voices = _resolve_cast(lines, cast)
 
-        clips = [
-            self._synthesizer.synthesize(
-                line.text, voice=voices[line.speaker], style=line.style, language=language
+        clips = []
+        for done, line in enumerate(lines, start=1):
+            clips.append(
+                self._synthesizer.synthesize(
+                    line.text, voice=voices[line.speaker], style=line.style, language=language
+                )
             )
-            for line in lines
-        ]
+            if on_progress:
+                on_progress(done, len(lines))
         audio = concatenate(clips, gap_ms=gap_ms)
         return RenderedDialogue(audio=audio, segments=_segments(lines, clips, gap_ms))
 

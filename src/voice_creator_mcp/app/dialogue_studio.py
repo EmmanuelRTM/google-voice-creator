@@ -9,12 +9,12 @@ from typing import Any
 from voice_creator_mcp.app.backend import Backend
 from voice_creator_mcp.app.outputs import OutputWriter, WrittenOutput
 from voice_creator_mcp.app.voice_library import VoiceLibrary
-from voice_creator_mcp.dialogue.renderer import DialogueRenderer
+from voice_creator_mcp.dialogue.renderer import DialogueRenderer, ProgressCallback
 from voice_creator_mcp.dialogue.script import parse_script, speakers
 from voice_creator_mcp.errors import LiveConnectionError
 from voice_creator_mcp.live.config import LiveSessionOptions, ReplicatedVoice, build_live_config
 from voice_creator_mcp.live.instructions import LiveMode, build_system_instruction
-from voice_creator_mcp.live.runner import LiveDialogueResult, LiveDialogueRunner
+from voice_creator_mcp.live.runner import LiveDialogueResult, LiveDialogueRunner, TurnCallback
 
 
 class DialogueStudio:
@@ -45,6 +45,7 @@ class DialogueStudio:
         output_name: str | None = None,
         gap_ms: int = 300,
         language: str | None = None,
+        on_progress: ProgressCallback | None = None,
     ) -> dict[str, Any]:
         lines = parse_script(script)
         in_script = {name.casefold() for name in speakers(lines)}
@@ -54,7 +55,7 @@ class DialogueStudio:
             if speaker.casefold() in in_script
         }
         rendered = DialogueRenderer(self._backend.synthesizer()).render(
-            lines, voices, gap_ms=gap_ms, language=language
+            lines, voices, gap_ms=gap_ms, language=language, on_progress=on_progress
         )
         written = self._outputs.write(
             output_name, rendered.audio, rendered.transcript(), prefix="dialogue"
@@ -78,6 +79,7 @@ class DialogueStudio:
         extra_instructions: str | None = None,
         output_name: str | None = None,
         gap_ms: int = 400,
+        on_turn: TurnCallback | None = None,
     ) -> dict[str, Any]:
         voice_profile = self._library.profile(profile)
         options = LiveSessionOptions(
@@ -91,7 +93,9 @@ class DialogueStudio:
         )
         build_live_config(options)  # fail fast on model/option mismatches
 
-        result, warnings = await self._run_with_consent_fallback(profile, options, prompts, gap_ms)
+        result, warnings = await self._run_with_consent_fallback(
+            profile, options, prompts, gap_ms, on_turn
+        )
         if result.consent_signature:
             self._library.remember_consent_signature(profile, result.consent_signature)
         written = self._outputs.write(
@@ -112,13 +116,14 @@ class DialogueStudio:
         options: LiveSessionOptions,
         prompts: Sequence[str],
         gap_ms: int,
+        on_turn: TurnCallback | None,
     ) -> tuple[LiveDialogueResult, list[str]]:
         """Use the cached consent signature; if it is rejected, re-verify with the recording."""
         runner = LiveDialogueRunner(
             self._backend.live_connector(), turn_timeout_s=self._live_turn_timeout_s
         )
         try:
-            return await runner.run(options, prompts, gap_ms=gap_ms), []
+            return await runner.run(options, prompts, gap_ms=gap_ms, on_turn=on_turn), []
         except LiveConnectionError:
             voice = options.voice
             if not (isinstance(voice, ReplicatedVoice) and voice.consent_signature):
@@ -126,11 +131,12 @@ class DialogueStudio:
         self._library.forget_consent_signature(profile)
         retry = replace(options, voice=self._library.live_voice(profile))
         warning = "cached consent signature was rejected; re-verified with the consent recording"
-        return await runner.run(retry, prompts, gap_ms=gap_ms), [warning]
+        return await runner.run(retry, prompts, gap_ms=gap_ms, on_turn=on_turn), [warning]
 
 
 def _paths(written: WrittenOutput) -> dict[str, str]:
     return {
+        "render_id": written.audio_path.stem,
         "audio_path": str(written.audio_path),
         "transcript_path": str(written.transcript_path),
     }

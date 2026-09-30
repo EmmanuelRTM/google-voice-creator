@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 import pytest
@@ -63,3 +64,71 @@ def test_repr_never_leaks_the_api_key(tmp_path: Path) -> None:
     settings = Settings.from_env({"GEMINI_API_KEY": "super-secret"}, home=tmp_path)
     assert "super-secret" not in repr(settings)
     assert settings.require_api_key() == "super-secret"
+
+
+def test_api_key_can_come_from_a_secret_file(tmp_path: Path) -> None:
+    secret = tmp_path / "gemini.key"
+    secret.write_text("AQ.file-key\n")
+    secret.chmod(0o600)
+
+    settings = Settings.from_env({"GEMINI_API_KEY_FILE": str(secret)}, home=tmp_path)
+
+    assert settings.require_api_key() == "AQ.file-key"
+    assert settings.credential_warnings() == []
+
+
+def test_environment_key_wins_over_the_secret_file(tmp_path: Path) -> None:
+    secret = tmp_path / "gemini.key"
+    secret.write_text("AQ.file-key")
+    settings = Settings.from_env(
+        {"GEMINI_API_KEY": "AQ.env-key", "GEMINI_API_KEY_FILE": str(secret)}, home=tmp_path
+    )
+    assert settings.require_api_key() == "AQ.env-key"
+
+
+def test_unreadable_secret_file_is_a_config_error(tmp_path: Path) -> None:
+    with pytest.raises(ConfigError, match="GEMINI_API_KEY_FILE"):
+        Settings.from_env({"GEMINI_API_KEY_FILE": str(tmp_path / "missing")}, home=tmp_path)
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX permissions only")
+def test_world_readable_secret_file_is_flagged(tmp_path: Path) -> None:
+    secret = tmp_path / "gemini.key"
+    secret.write_text("AQ.file-key")
+    secret.chmod(0o644)
+
+    settings = Settings.from_env({"GEMINI_API_KEY_FILE": str(secret)}, home=tmp_path)
+
+    assert any("chmod 600" in warning for warning in settings.credential_warnings())
+
+
+def test_legacy_standard_keys_are_flagged(tmp_path: Path) -> None:
+    settings = Settings.from_env({"GEMINI_API_KEY": "AIzaSyLegacyKey"}, home=tmp_path)
+    assert any("auth key" in warning for warning in settings.credential_warnings())
+
+
+def test_allowed_dirs_and_rate_limit(tmp_path: Path) -> None:
+    settings = Settings.from_env(
+        {
+            "VOICE_CREATOR_ALLOWED_DIRS": os.pathsep.join(
+                [str(tmp_path / "a"), str(tmp_path / "b")]
+            ),
+            "VOICE_CREATOR_RATE_LIMIT_PER_MINUTE": "20",
+        },
+        home=tmp_path,
+    )
+
+    assert settings.allowed_dirs == (tmp_path / "a", tmp_path / "b")
+    assert settings.rate_limit_per_minute == 20
+
+
+def test_defaults_leave_paths_unrestricted_and_no_rate_limit(tmp_path: Path) -> None:
+    settings = Settings.from_env({}, home=tmp_path)
+    assert settings.allowed_dirs is None
+    assert settings.rate_limit_per_minute is None
+
+
+@pytest.mark.parametrize("value", ["zero", "0", "-5"])
+def test_invalid_rate_limit_is_rejected(tmp_path: Path, value: str) -> None:
+    with pytest.raises(ConfigError, match="RATE_LIMIT"):
+        Settings.from_env({"VOICE_CREATOR_RATE_LIMIT_PER_MINUTE": value}, home=tmp_path)

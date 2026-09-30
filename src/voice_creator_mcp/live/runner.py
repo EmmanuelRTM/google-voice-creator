@@ -10,7 +10,7 @@ IN_PROGRESS, which also works for the standard model where the status may be abs
 from __future__ import annotations
 
 import asyncio
-from collections.abc import AsyncIterator, Sequence
+from collections.abc import AsyncIterator, Awaitable, Callable, Sequence
 from contextlib import AbstractAsyncContextManager, AsyncExitStack
 from dataclasses import dataclass, field
 from typing import Any, Protocol
@@ -20,6 +20,9 @@ from voice_creator_mcp.errors import LiveConnectionError, LiveSessionError
 from voice_creator_mcp.live.config import LiveSessionOptions, build_live_config
 
 IN_PROGRESS = "IN_PROGRESS"
+
+TurnCallback = Callable[[int, int], Awaitable[None]]
+"""Awaited with (turns done, total turns) after each completed turn."""
 
 
 @dataclass(frozen=True)
@@ -92,7 +95,12 @@ class LiveDialogueRunner:
         self._max_receive_passes = max_receive_passes
 
     async def run(
-        self, options: LiveSessionOptions, prompts: Sequence[str], *, gap_ms: int = 400
+        self,
+        options: LiveSessionOptions,
+        prompts: Sequence[str],
+        *,
+        gap_ms: int = 400,
+        on_turn: TurnCallback | None = None,
     ) -> LiveDialogueResult:
         prompts = [prompt.strip() for prompt in prompts]
         if not prompts or not all(prompts):
@@ -107,7 +115,7 @@ class LiveDialogueRunner:
             except Exception as exc:
                 raise LiveConnectionError(f"Could not open a Live session: {exc}") from exc
             try:
-                turns, buffers = await self._run_turns(session, prompts)
+                turns, buffers = await self._run_turns(session, prompts, on_turn)
             except LiveSessionError:
                 raise
             except Exception as exc:
@@ -117,7 +125,7 @@ class LiveDialogueRunner:
         return _assemble(turns, buffers, signature, gap_ms)
 
     async def _run_turns(
-        self, session: LiveSession, prompts: list[str]
+        self, session: LiveSession, prompts: list[str], on_turn: TurnCallback | None
     ) -> tuple[list[LiveTurn], list[_TurnBuffer]]:
         turns, buffers = [], []
         for number, prompt in enumerate(prompts, start=1):
@@ -139,6 +147,8 @@ class LiveDialogueRunner:
                     interrupted=buffer.interrupted,
                 )
             )
+            if on_turn:
+                await on_turn(number, len(prompts))
         return turns, buffers
 
     async def _collect_turn(self, session: LiveSession, number: int) -> _TurnBuffer:

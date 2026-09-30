@@ -43,3 +43,15 @@ class LiveSessionError(VoiceCreatorError):
 
 class LiveConnectionError(LiveSessionError):
     """The Live session could not be established (for example, a rejected consent signature)."""
+
+
+class AuthorizationError(VoiceCreatorError):
+    """The caller is not authenticated or lacks the scope a tool needs."""
+
+
+class PathNotAllowedError(VoiceCreatorError):
+    """A file path outside the directories this server may read."""
+
+
+class RateLimitError(VoiceCreatorError):
+    """Too many costly calls in the current window."""

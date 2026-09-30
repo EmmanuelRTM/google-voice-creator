@@ -4,11 +4,10 @@ from __future__ import annotations
 
 from collections.abc import Callable, Sequence
 from datetime import UTC, datetime
-from pathlib import Path
 from typing import Any, Literal
 
 from voice_creator_mcp.app.backend import Backend
-from voice_creator_mcp.audio.pcm import read_wav, to_wav_bytes
+from voice_creator_mcp.audio.pcm import read_wav_bytes, to_wav_bytes
 from voice_creator_mcp.audio.quality import (
     CONSENT_RECORDING,
     LIVE_VOICE_SAMPLE,
@@ -44,23 +43,23 @@ class VoiceLibrary:
 
     # Recordings and local profiles ---------------------------------------
 
-    def validate_sample(self, path: Path | str, purpose: SamplePurpose = "live") -> QualityReport:
+    def validate_recording(self, wav: bytes, purpose: SamplePurpose = "live") -> QualityReport:
         if purpose not in _REQUIREMENTS:
             raise ValueError(f"Unknown purpose {purpose!r}; use one of {', '.join(_REQUIREMENTS)}")
-        return assess(read_wav(Path(path)), _REQUIREMENTS[purpose])
+        return assess(read_wav_bytes(wav, source="recording"), _REQUIREMENTS[purpose])
 
     def register_profile(
         self,
         name: str,
         *,
         display_name: str,
-        sample_path: Path | str,
-        consent_path: Path | str,
+        sample_wav: bytes,
+        consent_wav: bytes,
         language_code: str | None = None,
         overwrite: bool = False,
     ) -> dict[str, Any]:
-        sample_report = self.validate_sample(sample_path, "live")
-        consent_report = self.validate_sample(consent_path, "consent")
+        sample_report = self.validate_recording(sample_wav, "live")
+        consent_report = self.validate_recording(consent_wav, "consent")
         errors = [*sample_report.errors, *consent_report.errors]
         if errors:
             raise AudioFormatError("; ".join(errors))
@@ -68,8 +67,8 @@ class VoiceLibrary:
         profile = self._profiles.create(
             name,
             display_name=display_name,
-            sample_wav=to_wav_bytes(read_wav(Path(sample_path))),
-            consent_wav=to_wav_bytes(read_wav(Path(consent_path))),
+            sample_wav=_canonical(sample_wav),
+            consent_wav=_canonical(consent_wav),
             language_code=language_code,
             overwrite=overwrite,
         )
@@ -170,12 +169,12 @@ class VoiceLibrary:
         profile = self._profiles.get(name)
         if not profile.synthesis_voice:
             raise CastError(
-                f"Profile {name!r} has no Gemini voice yet; call replicate_voice_profile first"
+                f"Profile {name!r} has no Gemini voice yet; call voice_replicate_profile first"
             )
         if self._expired(profile.voice_expire_time):
             raise CastError(
                 f"The Gemini voice for profile {name!r} expired at {profile.voice_expire_time}; "
-                "call replicate_voice_profile again"
+                "call voice_replicate_profile again"
             )
         return profile.synthesis_voice
 
@@ -189,3 +188,8 @@ class VoiceLibrary:
         if expires.tzinfo is None:
             expires = expires.replace(tzinfo=UTC)
         return expires <= self._clock()
+
+
+def _canonical(wav: bytes) -> bytes:
+    """Re-encode as a minimal PCM WAV (drops metadata chunks some servers reject)."""
+    return to_wav_bytes(read_wav_bytes(wav))

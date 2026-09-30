@@ -38,11 +38,11 @@ def backend() -> FakeBackend:
 @pytest.fixture
 def library(tmp_path: Path, backend: FakeBackend) -> VoiceLibrary:
     library = VoiceLibrary(ProfileStore(tmp_path / "data"), backend, clock=lambda: NOW)
-    sample, consent = tmp_path / "sample.wav", tmp_path / "consent.wav"
-    sample.write_bytes(wav_bytes(make_tone(15.0)))
-    consent.write_bytes(wav_bytes(make_tone(6.0)))
     library.register_profile(
-        "mario", display_name="Mario", sample_path=sample, consent_path=consent
+        "mario",
+        display_name="Mario",
+        sample_wav=wav_bytes(make_tone(15.0)),
+        consent_wav=wav_bytes(make_tone(6.0)),
     )
     return library
 
@@ -77,6 +77,7 @@ def test_render_dialogue_resolves_profiles_and_writes_files(
     )
 
     assert [call["voice"] for call in backend.synth.calls] == ["voice_mario", "Kore"]
+    assert result["render_id"] == "scene"
     assert Path(result["audio_path"]).name == "scene.wav"
     assert Path(result["transcript_path"]).read_text(encoding="utf-8") == (
         "Mario: Hola Ana.\nAna: Hi Mario.\n"

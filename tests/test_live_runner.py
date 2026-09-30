@@ -134,3 +134,20 @@ async def test_prompts_are_required(prompts: list[str]) -> None:
     runner = LiveDialogueRunner(FakeConnector(FakeSession(passes_per_turn=[])))
     with pytest.raises(ValueError, match="prompt"):
         await runner.run(OPTIONS, prompts)
+
+
+async def test_turn_progress_is_reported() -> None:
+    session = FakeSession(
+        passes_per_turn=[
+            [[audio_event(0.2), LiveEvent(turn_complete=True)]],
+            [[audio_event(0.2), LiveEvent(turn_complete=True)]],
+        ]
+    )
+    progress: list[tuple[int, int]] = []
+
+    async def on_turn(done: int, total: int) -> None:
+        progress.append((done, total))
+
+    await LiveDialogueRunner(FakeConnector(session)).run(OPTIONS, ["a", "b"], on_turn=on_turn)
+
+    assert progress == [(1, 2), (2, 2)]
