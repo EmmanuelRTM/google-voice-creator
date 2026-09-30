@@ -6,8 +6,14 @@ readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "Apache-2.0" }
 dependencies = [
+    "anyio>=4.9",
     "google-genai>=2.25.0",
+    "httpx>=0.27",
     "mcp>=2.2,<3",
+    "pydantic>=2.12",
+    "pyjwt[crypto]>=2.10.1",
+    "starlette>=0.48",
+    "uvicorn>=0.31.1",
 ]
 
 [project.optional-dependencies]
