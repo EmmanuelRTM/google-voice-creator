@@ -61,3 +61,29 @@ def test_facade_issues_live_tokens(creator: VoiceCreator) -> None:
     )
     token = creator.issue_live_token("me", ttl_minutes=5)
     assert token.token.startswith("auth_tokens/")
+
+
+def test_live_speech_config_is_the_official_sdk_type(creator: VoiceCreator) -> None:
+    from google.genai import types
+
+    creator.create_profile(
+        "me",
+        display_name="Me",
+        sample=wav_bytes(make_tone(15.0)),
+        consent=wav_bytes(make_tone(6.0)),
+        language_code="es-MX",
+    )
+
+    config = creator.live_speech_config("me")
+
+    assert isinstance(config, types.SpeechConfig)
+    replicated = config.voice_config.replicated_voice_config
+    assert replicated.mime_type == "audio/wav"
+    assert replicated.voice_sample_audio == creator.voices.live_voice("me").sample_wav
+    assert replicated.consent_audio
+    assert config.language_code == "es-MX"
+
+    creator.voices.remember_consent_signature("me", "sig-1")
+    signed = creator.live_speech_config("me").voice_config.replicated_voice_config
+    assert signed.voice_consent_signature.signature == "sig-1"
+    assert signed.consent_audio is None

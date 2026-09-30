@@ -23,8 +23,9 @@ Setup (once): voice_validate_recording -> voice_create_profile (a 10-20 s, 24 kH
 as *_base64, or *_path on local servers) -> voice_replicate_profile.
 
 Scripted dialogue: voice_preview_script, then voice_render_dialogue with a cast such as
-{"Mario": "profile:mario", "Ana": "Kore"}. Lines look like `Speaker (style): text` and
-may contain vocal tags like <laugh> or <short pause>.
+[{"speaker": "Mario", "voice": "profile:mario"}, {"speaker": "Ana", "voice": "Kore"}].
+Lines look like `Speaker (style): text` and may contain vocal tags like <laugh> or
+<short pause>.
 
 Live dialogue: voice_live_dialogue(profile, prompts) speaks as the user with Gemini 3.8
 Live. Use mode="verbatim" to read given lines, or model="gemini-3.8-live-extended-thinking"

@@ -55,6 +55,7 @@ class LiveMcpBridge:
         self._allowed = frozenset(allowed_tools) if allowed_tools is not None else None
         self._scheduling = scheduling
         self._pending: dict[str, asyncio.Task[None]] = {}
+        self._unanswered = 0
 
     async def tools(self) -> list[types.Tool]:
         listed = await self._mcp.list_tools()
@@ -70,8 +71,19 @@ class LiveMcpBridge:
         ]
         return [types.Tool(function_declarations=declarations)]
 
+    @property
+    def busy(self) -> bool:
+        """True while a call runs, or a result was sent and the model has not spoken since.
+
+        With Extended Thinking the model can report IDLE before it reacts to a result
+        (WHEN_IDLE scheduling), so end a conversation on IDLE only when not busy.
+        """
+        return bool(self._pending) or self._unanswered > 0
+
     async def dispatch(self, message: types.LiveServerMessage, live: LiveSession) -> bool:
         """Handle tool calls and cancellations; returns False for any other message."""
+        if _has_model_output(message):
+            self._unanswered = 0
         if message.tool_call and message.tool_call.function_calls:
             for call in message.tool_call.function_calls:
                 call_id = call.id or call.name or ""
@@ -109,10 +121,18 @@ class LiveMcpBridge:
                 )
             ]
         )
+        if self._scheduling != types.FunctionResponseScheduling.SILENT:
+            self._unanswered += 1
         self._pending.pop(call.id or name, None)
 
     def _is_allowed(self, name: str) -> bool:
         return self._allowed is None or name in self._allowed
+
+
+def _has_model_output(message: types.LiveServerMessage) -> bool:
+    content = message.server_content
+    parts = content.model_turn.parts if content and content.model_turn else None
+    return bool(parts) or bool(content and content.output_transcription)
 
 
 def _input_schema(tool: Any) -> dict[str, Any]:

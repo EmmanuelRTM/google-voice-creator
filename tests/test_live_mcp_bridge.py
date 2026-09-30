@@ -142,3 +142,34 @@ async def test_scheduling_is_configurable(scheduling: str) -> None:
     await bridge.dispatch(tool_call("voice_list_profiles"), live)
     await bridge.drain()
     assert live.responses[0].scheduling == types.FunctionResponseScheduling(scheduling)
+
+
+def spoken() -> types.LiveServerMessage:
+    audio = types.Blob(data=b"\x00\x00", mime_type="audio/pcm;rate=24000")
+    return types.LiveServerMessage(
+        server_content=types.LiveServerContent(
+            model_turn=types.Content(parts=[types.Part(inline_data=audio)])
+        )
+    )
+
+
+async def test_busy_until_the_model_speaks_after_a_tool_result() -> None:
+    mcp, live = FakeMcpSession(delay=0.01), FakeLiveSession()
+    bridge = LiveMcpBridge(mcp)
+    assert bridge.busy is False
+
+    await bridge.dispatch(tool_call("voice_list_profiles"), live)
+    assert bridge.busy is True  # the call is running
+    await bridge.drain()
+    assert bridge.busy is True  # the result is out, the model has not reacted yet
+
+    assert await bridge.dispatch(spoken(), live) is False
+    assert bridge.busy is False
+
+
+async def test_silent_results_do_not_wait_for_a_reaction() -> None:
+    live = FakeLiveSession()
+    bridge = LiveMcpBridge(FakeMcpSession(), scheduling=types.FunctionResponseScheduling.SILENT)
+    await bridge.dispatch(tool_call("voice_list_profiles"), live)
+    await bridge.drain()
+    assert bridge.busy is False
