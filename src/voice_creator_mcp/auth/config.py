@@ -16,7 +16,7 @@ from urllib.parse import urlsplit
 from mcp.server.transport_security import TransportSecuritySettings
 
 from voice_creator.errors import ConfigError
-from voice_creator_mcp.auth.jwt_verifier import DEFAULT_ALGORITHMS
+from voice_creator_mcp.auth.jwt_verifier import DEFAULT_ALGORITHMS, DEFAULT_SCOPE_CLAIMS
 
 AUTH_MODES = ("oauth", "none")
 _LOOPBACK_NAMES = {"localhost"}
@@ -32,6 +32,7 @@ class OAuthConfig:
     jwks_url: str | None = None
     algorithms: tuple[str, ...] = DEFAULT_ALGORITHMS
     documentation_url: str | None = None
+    scope_claims: tuple[str, ...] = DEFAULT_SCOPE_CLAIMS
 
 
 @dataclass(frozen=True)
@@ -46,6 +47,7 @@ class HttpConfig:
     jwks_url: str | None = None
     algorithms: tuple[str, ...] = DEFAULT_ALGORITHMS
     documentation_url: str | None = None
+    scope_claims: tuple[str, ...] = DEFAULT_SCOPE_CLAIMS
     allowed_hosts: tuple[str, ...] = ()
     allowed_origins: tuple[str, ...] = ()
 
@@ -69,6 +71,7 @@ class HttpConfig:
             jwks_url=read("VOICE_CREATOR_OAUTH_JWKS_URL"),
             algorithms=listing("VOICE_CREATOR_OAUTH_ALGORITHMS") or DEFAULT_ALGORITHMS,
             documentation_url=read("VOICE_CREATOR_DOCS_URL"),
+            scope_claims=listing("VOICE_CREATOR_OAUTH_SCOPE_CLAIMS") or DEFAULT_SCOPE_CLAIMS,
             allowed_hosts=listing("VOICE_CREATOR_ALLOWED_HOSTS"),
             allowed_origins=listing("VOICE_CREATOR_ALLOWED_ORIGINS"),
         )
@@ -88,6 +91,7 @@ class HttpConfig:
             jwks_url=self.jwks_url,
             algorithms=self.algorithms,
             documentation_url=self.documentation_url,
+            scope_claims=self.scope_claims,
         )
 
     def validate(self) -> None:

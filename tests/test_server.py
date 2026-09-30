@@ -118,7 +118,13 @@ async def test_local_end_to_end_with_paths_and_resources(tmp_path: Path) -> None
     await server.call_tool("voice_replicate_profile", {"name": "mario"})
     rendered = await server.call_tool(
         "voice_render_dialogue",
-        {"script": "Mario: Hola.\nAna: Hi.", "cast": {"Mario": "profile:mario", "Ana": "Kore"}},
+        {
+            "script": "Mario: Hola.\nAna: Hi.",
+            "cast": [
+                {"speaker": "Mario", "voice": "profile:mario"},
+                {"speaker": "Ana", "voice": "Kore"},
+            ],
+        },
     )
     live = await server.call_tool("voice_live_dialogue", {"profile": "mario", "prompts": ["Hi"]})
 
@@ -158,7 +164,8 @@ async def test_remote_mode_refuses_server_paths_and_redacts_them(tmp_path: Path)
         await server.call_tool("voice_validate_recording", {"wav_path": "/etc/passwd"})
     created = await create_profile(server)
     rendered = await server.call_tool(
-        "voice_render_dialogue", {"script": "Ana: Hi.", "cast": {"Ana": "Kore"}}
+        "voice_render_dialogue",
+        {"script": "Ana: Hi.", "cast": [{"speaker": "Ana", "voice": "Kore"}]},
     )
 
     assert created.structured_content["profile"]["sample_path"] is None
@@ -184,7 +191,8 @@ async def test_principals_cannot_see_each_others_voices_or_renders(tmp_path: Pat
     with signed_in("alice"):
         await create_profile(server)
         rendered = await server.call_tool(
-            "voice_render_dialogue", {"script": "Ana: Hi.", "cast": {"Ana": "Kore"}}
+            "voice_render_dialogue",
+            {"script": "Ana: Hi.", "cast": [{"speaker": "Ana", "voice": "Kore"}]},
         )
 
     with signed_in("bob"):
@@ -204,7 +212,7 @@ async def test_resources_require_authentication_when_auth_is_on(tmp_path: Path) 
 
 async def test_costly_tools_are_rate_limited(tmp_path: Path) -> None:
     server = make_server(tmp_path, rate_limiter=RateLimiter(max_calls=1))
-    args = {"script": "Ana: Hi.", "cast": {"Ana": "Kore"}}
+    args = {"script": "Ana: Hi.", "cast": [{"speaker": "Ana", "voice": "Kore"}]}
 
     await server.call_tool("voice_render_dialogue", args)
     with pytest.raises(ToolError, match="Rate limit"):
@@ -247,3 +255,11 @@ async def test_create_server_starts_without_an_api_key(tmp_path: Path) -> None:
     assert result.structured_content == {"profiles": []}
     with pytest.raises(ToolError, match="GEMINI_API_KEY"):
         await server.call_tool("voice_list_gemini_voices", {})
+
+
+async def test_cast_rejects_duplicate_speakers(tmp_path: Path) -> None:
+    cast = [{"speaker": "Ana", "voice": "Kore"}, {"speaker": "ana", "voice": "Puck"}]
+    with pytest.raises(ToolError, match="cast twice"):
+        await make_server(tmp_path).call_tool(
+            "voice_render_dialogue", {"script": "Ana: Hi.", "cast": cast}
+        )

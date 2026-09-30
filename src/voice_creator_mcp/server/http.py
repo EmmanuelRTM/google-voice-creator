@@ -63,6 +63,7 @@ def build_jwt_verifier(oauth: OAuthConfig) -> JwtTokenVerifier:
         audience=oauth.audience,
         key_resolver=jwks_key_resolver(jwks_uri),
         algorithms=oauth.algorithms,
+        scope_claims=oauth.scope_claims,
     )
 
 

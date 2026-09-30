@@ -36,6 +36,7 @@ DEFAULT_ALGORITHMS: tuple[str, ...] = (
     "EdDSA",
 )
 _REQUIRED_CLAIMS = ["exp", "iss", "aud", "sub"]
+DEFAULT_SCOPE_CLAIMS: tuple[str, ...] = ("scope", "scp")
 
 KeyResolver = Callable[[str], Any]
 """Returns the verification key for a raw JWT (e.g. by its `kid` from a JWKS)."""
@@ -50,6 +51,7 @@ class JwtTokenVerifier:
         key_resolver: KeyResolver,
         algorithms: Sequence[str] = DEFAULT_ALGORITHMS,
         leeway_seconds: int = 30,
+        scope_claims: Sequence[str] = DEFAULT_SCOPE_CLAIMS,
     ) -> None:
         unsafe = [
             alg for alg in algorithms if alg.upper().startswith("HS") or alg.lower() == "none"
@@ -63,6 +65,7 @@ class JwtTokenVerifier:
         self._key_resolver = key_resolver
         self._algorithms = list(algorithms)
         self._leeway = leeway_seconds
+        self._scope_claims = tuple(scope_claims)
 
     async def verify_token(self, token: str) -> AccessToken | None:
         try:
@@ -83,7 +86,7 @@ class JwtTokenVerifier:
         return AccessToken(
             token=token,
             client_id=str(claims.get("client_id") or claims.get("azp") or "unknown"),
-            scopes=parse_scopes(claims),
+            scopes=parse_scopes(claims, self._scope_claims),
             expires_at=int(claims["exp"]),
             resource=self._audience,
             subject=str(claims["sub"]),
@@ -91,14 +94,21 @@ class JwtTokenVerifier:
         )
 
 
-def parse_scopes(claims: dict[str, Any]) -> list[str]:
-    """Scopes from `scope` (space-delimited, RFC 9068) or `scp` (list, e.g. Entra/Okta)."""
-    raw = claims.get("scope", claims.get("scp"))
-    if isinstance(raw, str):
-        return raw.split()
-    if isinstance(raw, list):
-        return [str(scope) for scope in raw]
-    return []
+def parse_scopes(
+    claims: dict[str, Any], claim_names: Sequence[str] = DEFAULT_SCOPE_CLAIMS
+) -> list[str]:
+    """Union of the scopes found in `claim_names`, in order and without duplicates.
+
+    `scope` is space-delimited (RFC 9068), `scp` may be a list (Okta, Entra delegated).
+    Auth0 RBAC uses `permissions` and Entra application tokens use `roles`; enable
+    those with VOICE_CREATOR_OAUTH_SCOPE_CLAIMS.
+    """
+    scopes: list[str] = []
+    for name in claim_names:
+        raw = claims.get(name)
+        values = raw.split() if isinstance(raw, str) else raw if isinstance(raw, list) else []
+        scopes += [str(value) for value in values if str(value) not in scopes]
+    return scopes
 
 
 def jwks_key_resolver(jwks_uri: str, *, cache_seconds: int = 300) -> KeyResolver:

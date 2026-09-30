@@ -176,3 +176,28 @@ def test_discovery_rejects_issuer_mix_up() -> None:
 def test_discovery_requires_a_jwks_uri() -> None:
     with pytest.raises(ConfigError, match="jwks_uri"):
         discover_jwks_uri(ISSUER, http_get=lambda _: None)
+
+
+@pytest.mark.parametrize(
+    ("claim", "value"),
+    [("permissions", ["voice:read", "voice:clone"]), ("roles", ["voice:read", "voice:clone"])],
+)
+async def test_extra_scope_claims_can_be_enabled(claim: str, value: list[str]) -> None:
+    """Auth0 RBAC puts permissions in `permissions`; Entra app tokens use `roles`."""
+    verifier = JwtTokenVerifier(
+        issuer=ISSUER,
+        audience=AUDIENCE,
+        key_resolver=lambda _: PUBLIC_KEY,
+        scope_claims=("scope", "scp", claim),
+    )
+
+    access = await verifier.verify_token(sign(claims(scope="openid", **{claim: value})))
+
+    assert set(access.scopes) == {"openid", "voice:read", "voice:clone"}
+
+
+async def test_extra_scope_claims_are_ignored_by_default(verifier: JwtTokenVerifier) -> None:
+    access = await verifier.verify_token(
+        sign(claims(scope="voice:read", permissions=["voice:clone"]))
+    )
+    assert access.scopes == ["voice:read"]

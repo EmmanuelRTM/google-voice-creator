@@ -20,23 +20,19 @@ from collections.abc import Iterable, Sequence
 from pathlib import Path
 from typing import Any
 
+from voice_creator.dialogue.cast import build_cast
 from voice_creator.errors import ConfigError, VoiceCreatorError
 
 
 def parse_cast(entries: Iterable[str]) -> dict[str, str]:
     """`Speaker=voice` pairs into a cast map (speakers are case-insensitive, no duplicates)."""
-    cast: dict[str, str] = {}
-    seen: set[str] = set()
+    pairs = []
     for entry in entries:
         speaker, sep, voice = entry.partition("=")
-        speaker, voice = speaker.strip(), voice.strip()
-        if not sep or not speaker or not voice:
+        if not sep:
             raise ValueError(f"Cast entries look like Speaker=voice, got {entry!r}")
-        if speaker.casefold() in seen:
-            raise ValueError(f"Speaker {speaker!r} is cast twice")
-        seen.add(speaker.casefold())
-        cast[speaker] = voice
-    return cast
+        pairs.append((speaker, voice))
+    return build_cast(pairs)
 
 
 def build_parser() -> argparse.ArgumentParser:

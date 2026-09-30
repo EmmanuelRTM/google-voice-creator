@@ -112,3 +112,14 @@ def test_transport_security_on_public_interfaces_omits_loopback() -> None:
 
     assert "127.0.0.1:*" not in security.allowed_hosts
     assert security.allowed_hosts == ["voice.example.com", "voice.internal:8765"]
+
+
+def test_scope_claims_are_configurable() -> None:
+    config = HttpConfig.from_env(
+        {**OAUTH_ENV, "VOICE_CREATOR_OAUTH_SCOPE_CLAIMS": "scope, permissions"}
+    )
+    assert config.oauth.scope_claims == ("scope", "permissions")
+
+
+def test_scope_claims_default_to_scope_and_scp() -> None:
+    assert HttpConfig.from_env(OAUTH_ENV).oauth.scope_claims == ("scope", "scp")

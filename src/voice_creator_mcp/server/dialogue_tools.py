@@ -5,8 +5,9 @@ from typing import Annotated, Literal
 import anyio
 from mcp.server.mcpserver import Context, MCPServer
 from mcp.types import ToolAnnotations
-from pydantic import Field
+from pydantic import BaseModel, Field
 
+from voice_creator.dialogue.cast import build_cast
 from voice_creator_mcp.server import schemas as out
 from voice_creator_mcp.server.guard import ToolGuard, in_thread, report_progress
 
@@ -26,6 +27,19 @@ Script = Annotated[
 OutputName = Annotated[
     str | None, Field(description="File name for the render (no extension)", max_length=80)
 ]
+
+
+class CastEntry(BaseModel):
+    """One speaker and the voice that performs them (a list, not a map, so every
+    Gemini SDK can fill it: free-form objects lose their shape in function calling)."""
+
+    speaker: str = Field(description="Speaker name exactly as written in the script", max_length=40)
+    voice: str = Field(
+        description="`profile:<name>`, a stored voice id, a voicekey_..., or a prebuilt "
+        "voice such as Kore",
+        max_length=200,
+    )
+
 
 _LOCAL_READ = ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False)
 _GENERATE = ToolAnnotations(read_only_hint=False, destructive_hint=False, open_world_hint=True)
@@ -53,12 +67,8 @@ def register_dialogue_tools(server: MCPServer, guard: ToolGuard) -> None:
     async def voice_render_dialogue(
         script: Script,
         cast: Annotated[
-            dict[str, str],
-            Field(
-                description="Speaker -> voice: `profile:<name>`, a stored voice id, "
-                "a voicekey_..., or a prebuilt voice such as Kore",
-                max_length=MAX_CAST,
-            ),
+            list[CastEntry],
+            Field(description="Who voices each speaker", min_length=1, max_length=MAX_CAST),
         ],
         ctx: Context,
         output_name: OutputName = None,
@@ -80,7 +90,7 @@ def register_dialogue_tools(server: MCPServer, guard: ToolGuard) -> None:
         result = await in_thread(
             guard.workspace().studio.render_dialogue,
             script,
-            cast,
+            build_cast((entry.speaker, entry.voice) for entry in cast),
             output_name=output_name,
             gap_ms=gap_ms,
             language=language,
