@@ -8,7 +8,7 @@ The **MCP** column says how this repo's server deals with each case:
 
 | # | Edge case | Consequence | MCP |
 |---|---|---|---|
-| A1 | Sample shorter than 10 s or longer than 20 s (Live) | Request rejected | Enforced (`validate_voice_sample`, `register_voice_profile`) |
+| A1 | Sample shorter than 10 s or longer than 20 s (Live) | Request rejected | Enforced (`voice_validate_recording`, `voice_create_profile`) |
 | A2 | Sample isn't 24 kHz, or is stereo, 8-bit, 24-bit or float | Live Developer API accepts only 16-bit 24 kHz WAV | Enforced, with an `ffmpeg` hint |
 | A3 | MP3, M4A or Opus file | Not WAV | Enforced; the error explains how to convert |
 | A4 | Clipping (peaks at 0 dBFS) | Distortion gets cloned | Warned |
@@ -31,14 +31,14 @@ The **MCP** column says how this repo's server deals with each case:
 | B5 | Undisclosed AI voice in calls | Deceptive, and illegal in some places | The Live persona prompt never tells the model to deny being AI |
 | B6 | Biometric data at rest (GDPR, BIPA and similar) | Liability | Handled: profiles are `0700`/`0600`, `.gitignore` excludes `*.wav` and data dirs |
 | B7 | Voice keys and consent signatures leaking through tool output | Credential-like values exposed | Handled: masked in every tool response |
-| B8 | Right to be forgotten | Must delete both remote and local copies | `delete_voice_profile(delete_remote_voice=true)` |
+| B8 | Right to be forgotten | Must delete both remote and local copies | `voice_delete_profile(delete_remote_voice=true)` |
 | B9 | Provenance | Output carries SynthID, replication adds C2PA | Doc (don't strip metadata when you publish) |
 
 ## C. Voices API
 
 | # | Edge case | Consequence | MCP |
 |---|---|---|---|
-| C1 | More than 200 active stored voices | `RESOURCE_EXHAUSTED` | Doc; delete unused voices with `delete_voice` |
+| C1 | More than 200 active stored voices | `RESOURCE_EXHAUSTED` | Doc; delete unused voices with `voice_delete_gemini_voice` |
 | C2 | `prompted` voice with `store=false` | `INVALID_ARGUMENT` | Handled (design always stores) |
 | C3 | Stateless key older than about 7 days | Synthesis fails | Enforced: the expiry is checked before use, with instructions to re-replicate |
 | C4 | Stored voice older than 1 year | Voice disappears | Enforced (same `expire_time` check) |
@@ -53,7 +53,7 @@ The **MCP** column says how this repo's server deals with each case:
 | # | Edge case | Consequence | MCP |
 |---|---|---|---|
 | D1 | Style written into the text ("say warmly: …") | 3.8 reads it aloud | Handled: `(style)` is sent as a `speech_metadata` annotation |
-| D2 | A mistyped tag (`<laugh`) or unknown tag | Read aloud literally | Doc (`preview_dialogue_script` shows the parsed text) |
+| D2 | A mistyped tag (`<laugh`) or unknown tag | Read aloud literally | Doc (`voice_preview_script` shows the parsed text) |
 | D3 | Tags in transcripts, captions or other LLMs | Noise | Handled: transcripts strip `<tags>` |
 | D4 | Tone or voice switches in long-form output (reported after phrase changes) | Inconsistent voice | Handled: line-by-line synthesis; keep lines short |
 | D5 | More than two speakers, or custom voices in one request | Multi-speaker needs exactly two speakers | Handled: line-by-line rendering allows any cast |
@@ -84,7 +84,7 @@ The **MCP** column says how this repo's server deals with each case:
 | E14 | Using `send_client_content` mid-conversation on 3.x | Unexpected results | Handled: text is sent with `send_realtime_input` |
 | E15 | Proactive audio or safety filtering leaves a turn silent | Empty turn | Warned; errors only if the whole session has no audio |
 | E16 | Transcripts arrive out of order or merged with the next turn | Wrong captions | Doc (transcription is independent of audio ordering) |
-| E17 | Verbatim mode paraphrases or answers instead of reading | Wrong words | Doc: use `render_dialogue` for exact wording |
+| E17 | Verbatim mode paraphrases or answers instead of reading | Wrong words | Doc: use `voice_render_dialogue` for exact wording |
 | E18 | Mid-sentence language switching | Unexpected language | Doc: set `language_code` and state the language in the prompt |
 | E19 | The voice sample is re-sent every session (about 1 MB) | Bandwidth and latency | Doc; the cached signature at least avoids re-sending consent |
 | E20 | Shipping the API key to a browser or mobile client | Key theft | Doc: use ephemeral tokens (`v1alpha`) for client-side apps |

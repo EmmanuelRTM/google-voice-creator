@@ -39,6 +39,7 @@ Research date: **2026-09-30** (15 days after the 2026-09-15 launch).
 | [03-use-cases.md](03-use-cases.md) | Use cases for your voice, mapped to model and MCP tool |
 | [04-edge-cases.md](04-edge-cases.md) | Edge cases by category, with how the MCP server handles each |
 | [05-sources.md](05-sources.md) | Sources, evidence levels and open questions |
+| [06-mcp-and-auth.md](06-mcp-and-auth.md) | MCP 2026-07-28 and OAuth best practices, threat model, scopes, Gemini credentials |
 
 ## How this research was done (read before relying on it)
 
