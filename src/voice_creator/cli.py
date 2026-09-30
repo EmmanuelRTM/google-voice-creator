@@ -81,11 +81,16 @@ def build_parser() -> argparse.ArgumentParser:
     verify = commands.add_parser("verify", help="check every Gemini integration end to end")
     verify.add_argument("--profile", default="verify")
     verify.add_argument("--display-name", default="Voice verification")
-    verify.add_argument("--sample", help="(re)create the profile from this 10-20 s WAV")
+    verify.add_argument(
+        "--sample",
+        help="create the profile from this 10-20 s WAV (existing profiles are never replaced)",
+    )
     verify.add_argument("--consent", help="the consent recording for --sample")
     verify.add_argument("--language")
     verify.add_argument(
-        "--replicate", action="store_true", help="also test TTS with a 7-day voice key"
+        "--replicate",
+        action="store_true",
+        help="if the profile has no Gemini voice yet, make a 7-day key (nothing stored) for TTS",
     )
     verify.add_argument("--skip", action="append", default=[], metavar="CHECK[,CHECK]")
     verify.add_argument("--report", help="also write the report (.md or .json)")

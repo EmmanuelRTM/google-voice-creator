@@ -24,25 +24,28 @@ from voice_creator.diagnostics.report import (
     skipped,
     warned,
 )
-from voice_creator.errors import ProfileError
+from voice_creator.errors import CastError, ProfileError
 from voice_creator.live.config import GEMINI_38_LIVE_EXTENDED_THINKING
 from voice_creator.live.realtime import OUTPUT_SAMPLE_RATE
 from voice_creator.live.runner import LiveConnector
 from voice_creator.live.tokens import LiveToken
 from voice_creator.studio.dialogue_studio import SIGNATURE_REJECTED
+from voice_creator.studio.voice_library import PROFILE_PREFIX, VoiceLibrary
 
 TokenConnector = Callable[[LiveToken], LiveConnector]
 
 GREETING = "Say hello and introduce yourself in one short sentence."
 TTS_SPEAKER = "Me"
+SCRATCH_PROFILE = "verify"
 TTS_LINE = "Hello! This is a short test of my cloned voice with Gemini text to speech."
 
 
 @dataclass(frozen=True)
 class VerifyPlan:
-    """What to verify. With `sample` and `consent`, the profile is (re)created from them."""
+    """What to verify. With `sample` and `consent`, the profile is created from them; only
+    the scratch `verify` profile is ever re-created, so real profiles are never replaced."""
 
-    profile: str = "verify"
+    profile: str = SCRATCH_PROFILE
     display_name: str = "Voice verification"
     sample: bytes | None = None
     consent: bytes | None = None
@@ -118,6 +121,11 @@ class GeminiChecks:
     async def profile(self) -> Outcome:
         plan = self._plan
         if plan.sample is not None and plan.consent is not None:
+            if plan.profile != SCRATCH_PROFILE and self._exists(plan.profile):
+                return failed(
+                    f"Profile {plan.profile!r} already exists; omit --sample/--consent to "
+                    "verify it as it is, or verify the recordings under another --profile"
+                )
             created = self._voices.register_profile(
                 plan.profile,
                 display_name=plan.display_name,
@@ -134,6 +142,13 @@ class GeminiChecks:
                 f"Profile {plan.profile!r} not found; pass --sample and --consent to create it"
             )
         return passed(f"Using the saved profile {plan.profile!r}", **profile.to_public_dict())
+
+    def _exists(self, name: str) -> bool:
+        try:
+            self._voices.profile(name)
+        except ProfileError:
+            return False
+        return True
 
     async def voices_api(self) -> Outcome:
         listed = await asyncio.to_thread(self._voices.list_voices, page_size=5)
@@ -218,20 +233,28 @@ class GeminiChecks:
     # TTS ---------------------------------------------------------------------
 
     async def tts_cloned_voice(self) -> Outcome:
-        if not self._plan.replicate:
-            return skipped("Pass --replicate to create a 7-day voice key (nothing stored)")
+        """Render with the profile's Gemini voice; never replace a voice the user relies on.
+
+        Only a profile without a usable voice gets a stateless 7-day key (`--replicate`).
+        """
         name = self._plan.profile
-        await asyncio.to_thread(self._voices.replicate_profile, name, store=False)
+        existing = _usable_voice(self._voices, name)
+        if existing is None:
+            if not self._plan.replicate:
+                return skipped("Pass --replicate to create a 7-day voice key (nothing stored)")
+            await asyncio.to_thread(self._voices.replicate_profile, name, store=False)
         result = await asyncio.to_thread(
             self._dialogue.render_dialogue,
             f"{TTS_SPEAKER} (warm, cheerful): {TTS_LINE}",
             {TTS_SPEAKER: f"profile:{name}"},
             output_name="verify-tts",
         )
+        which = "the profile's existing voice" if existing else "a new 7-day voice key"
         return passed(
-            f"Gemini TTS rendered {result['duration_seconds']} s with the replicated voice",
+            f"Gemini TTS rendered {result['duration_seconds']} s with {which}",
             audio_path=result["audio_path"],
             duration_seconds=result["duration_seconds"],
+            reused_existing_voice=existing is not None,
         )
 
     def _spoken(self, result: dict[str, Any], what: str) -> Outcome:
@@ -244,6 +267,13 @@ class GeminiChecks:
         if result["warnings"]:
             return warned(result["warnings"][0], **details)
         return passed(f"{result['model']} {what} ({result['duration_seconds']} s)", **details)
+
+
+def _usable_voice(voices: VoiceLibrary, profile: str) -> str | None:
+    try:
+        return voices.resolve_voice(f"{PROFILE_PREFIX}{profile}")
+    except CastError:
+        return None  # no Gemini voice yet, or it expired
 
 
 def _live_details(result: dict[str, Any]) -> dict[str, Any]:

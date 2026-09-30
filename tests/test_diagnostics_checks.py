@@ -156,3 +156,50 @@ async def test_checks_can_be_skipped_and_tts_needs_replicate(tmp_path, backend) 
     assert result(report, "live_realtime").status == "skip"
     assert "--replicate" in result(report, "tts_cloned_voice").summary
     assert backend.voices.calls[0][0] == "list"
+
+
+async def test_tts_reuses_an_existing_voice_instead_of_replacing_it(tmp_path, backend) -> None:
+    backend.voices.create_response = {"id": "voice_me", "type": "replicated"}
+    creator = make_creator(tmp_path, backend)
+    creator.create_profile("me", display_name="Me", sample=PLAN.sample, consent=PLAN.consent)
+    creator.voices.replicate_profile("me")  # a stored voice the user relies on
+
+    report = await verify(creator, backend, VerifyPlan(profile="me", replicate=True))
+
+    assert result(report, "tts_cloned_voice").status == "pass"
+    assert creator.voices.profile("me").voice_id == "voice_me"
+    assert [call for call in backend.voices.calls if call[0] == "create"] == [
+        backend.voices.calls[0]
+    ]
+    assert backend.synth.calls[-1]["voice"] == "voice_me"
+
+
+async def test_tts_without_a_voice_needs_replicate(tmp_path, backend) -> None:
+    creator = make_creator(tmp_path, backend)
+    report = await verify(creator, backend)
+    assert result(report, "tts_cloned_voice").status == "skip"
+    assert backend.voices.calls == [("list", backend.voices.calls[0][1])]
+
+
+async def test_recordings_never_overwrite_an_existing_real_profile(tmp_path, backend) -> None:
+    backend.voices.create_response = {"id": "voice_me", "type": "replicated"}
+    creator = make_creator(tmp_path, backend)
+    creator.create_profile("me", display_name="Me", sample=PLAN.sample, consent=PLAN.consent)
+    creator.voices.replicate_profile("me")
+
+    report = await verify(creator, backend, PLAN)  # PLAN targets "me" with recordings
+
+    profile = result(report, "profile")
+    assert profile.status == "fail"
+    assert "already exists" in profile.summary
+    assert creator.voices.profile("me").voice_id == "voice_me"
+
+
+async def test_the_scratch_profile_is_recreated_from_recordings(tmp_path, backend) -> None:
+    creator = make_creator(tmp_path, backend)
+    plan = VerifyPlan(sample=PLAN.sample, consent=PLAN.consent)
+
+    await verify(creator, backend, plan)
+    report = await verify(creator, backend, plan)
+
+    assert result(report, "profile").status == "pass"

@@ -49,10 +49,17 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--profile", default="verify")
     parser.add_argument("--display-name", default="Voice verification")
-    parser.add_argument("--sample", help="(re)create the profile from this 10-20 s WAV")
+    parser.add_argument(
+        "--sample",
+        help="create the profile from this 10-20 s WAV (existing profiles are never replaced)",
+    )
     parser.add_argument("--consent", help="the consent recording for --sample")
     parser.add_argument("--language")
-    parser.add_argument("--replicate", action="store_true", help="test TTS with a 7-day key")
+    parser.add_argument(
+        "--replicate",
+        action="store_true",
+        help="if the profile has no Gemini voice yet, make a 7-day key (nothing stored) for TTS",
+    )
     parser.add_argument("--skip", action="append", default=[], metavar="CHECK[,CHECK]")
     parser.add_argument("--mcp-url", help="public HTTPS MCP endpoint for the Interactions check")
     parser.add_argument("--interactions-model", default=DEFAULT_INTERACTIONS_MODEL)
