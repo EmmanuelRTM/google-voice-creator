@@ -1,12 +1,12 @@
 import pytest
 
-from voice_creator_mcp.errors import LiveSessionError
-from voice_creator_mcp.live.config import (
+from voice_creator.errors import LiveSessionError
+from voice_creator.live.config import (
     GEMINI_38_LIVE_EXTENDED_THINKING,
     LiveSessionOptions,
     ReplicatedVoice,
 )
-from voice_creator_mcp.live.runner import LiveDialogueRunner, LiveEvent
+from voice_creator.live.runner import LiveDialogueRunner, LiveEvent
 
 from fakes import FakeConnector, FakeSession, audio_event
 

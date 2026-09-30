@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from voice_creator_mcp.errors import ProfileError
-from voice_creator_mcp.voices.profiles import ProfileStore
+from voice_creator.errors import ProfileError
+from voice_creator.voices.profiles import ProfileStore
 
 FIXED_NOW = datetime(2026, 9, 30, 12, 0, tzinfo=UTC)
 

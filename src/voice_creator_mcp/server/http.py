@@ -7,6 +7,7 @@ import logging
 from mcp.server.auth.provider import TokenVerifier
 from starlette.types import ASGIApp
 
+from voice_creator.config import Settings
 from voice_creator_mcp.auth.config import HttpConfig, OAuthConfig
 from voice_creator_mcp.auth.http_guard import OAuthResourceGuard
 from voice_creator_mcp.auth.jwt_verifier import (
@@ -15,7 +16,6 @@ from voice_creator_mcp.auth.jwt_verifier import (
     jwks_key_resolver,
 )
 from voice_creator_mcp.auth.scopes import ALL_SCOPES, BASELINE_SCOPES, TOOL_SCOPES
-from voice_creator_mcp.config import Settings
 from voice_creator_mcp.server.composition import create_server
 
 logger = logging.getLogger(__name__)

@@ -15,7 +15,7 @@ import re
 from collections.abc import Iterable
 from dataclasses import dataclass
 
-from voice_creator_mcp.errors import ScriptParseError
+from voice_creator.errors import ScriptParseError
 
 _SPEAKER_LINE = re.compile(
     r"^(?P<speaker>[^\W\d_][\w .'\-]{0,39}?)\s*(?:\((?P<style>[^)]*)\))?\s*:\s*(?P<text>.*)$"

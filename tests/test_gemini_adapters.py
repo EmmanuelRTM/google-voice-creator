@@ -7,11 +7,11 @@ from typing import Any
 
 import pytest
 
-from voice_creator_mcp.errors import SynthesisError
-from voice_creator_mcp.gemini.live_gateway import GeminiLiveConnector, message_to_events
-from voice_creator_mcp.gemini.tts_gateway import GeminiTtsSynthesizer
-from voice_creator_mcp.gemini.voices_gateway import GeminiVoicesGateway
-from voice_creator_mcp.live.runner import LiveEvent
+from voice_creator.errors import SynthesisError
+from voice_creator.gemini.live_gateway import GeminiLiveConnector, message_to_events
+from voice_creator.gemini.tts_gateway import GeminiTtsSynthesizer
+from voice_creator.gemini.voices_gateway import GeminiVoicesGateway
+from voice_creator.live.runner import LiveEvent
 
 from conftest import make_tone, wav_bytes
 

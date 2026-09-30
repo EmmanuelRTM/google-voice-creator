@@ -13,13 +13,13 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-from voice_creator_mcp.app.backend import Backend
-from voice_creator_mcp.app.dialogue_studio import DialogueStudio
-from voice_creator_mcp.app.outputs import OutputWriter
-from voice_creator_mcp.app.voice_library import VoiceLibrary
+from voice_creator.errors import AuthorizationError
+from voice_creator.studio.backend import Backend
+from voice_creator.studio.dialogue_studio import DialogueStudio
+from voice_creator.studio.outputs import OutputWriter
+from voice_creator.studio.voice_library import VoiceLibrary
+from voice_creator.voices.profiles import ProfileStore
 from voice_creator_mcp.auth.principal import Principal
-from voice_creator_mcp.errors import AuthorizationError
-from voice_creator_mcp.voices.profiles import ProfileStore
 
 LOCAL_WORKSPACE_ID = "local"
 

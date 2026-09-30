@@ -6,19 +6,19 @@ from collections.abc import Callable, Sequence
 from datetime import UTC, datetime
 from typing import Any, Literal
 
-from voice_creator_mcp.app.backend import Backend
-from voice_creator_mcp.audio.pcm import read_wav_bytes, to_wav_bytes
-from voice_creator_mcp.audio.quality import (
+from voice_creator.audio.pcm import read_wav_bytes, to_wav_bytes
+from voice_creator.audio.quality import (
     CONSENT_RECORDING,
     LIVE_VOICE_SAMPLE,
     VOICES_API_SOURCE,
     QualityReport,
     assess,
 )
-from voice_creator_mcp.errors import AudioFormatError, CastError
-from voice_creator_mcp.live.config import ReplicatedVoice
-from voice_creator_mcp.voices.catalog import normalize_voice_id
-from voice_creator_mcp.voices.profiles import ProfileStore, VoiceProfile
+from voice_creator.errors import AudioFormatError, CastError
+from voice_creator.live.config import ReplicatedVoice
+from voice_creator.studio.backend import Backend
+from voice_creator.voices.catalog import normalize_voice_id
+from voice_creator.voices.profiles import ProfileStore, VoiceProfile
 
 SamplePurpose = Literal["live", "voices_api", "consent"]
 PROFILE_PREFIX = "profile:"

@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from mcp.server.mcpserver import MCPServer
 
-from voice_creator_mcp.app.backend import GeminiBackend
+from voice_creator.config import Settings
+from voice_creator.studio.backend import GeminiBackend
 from voice_creator_mcp.app.inputs import PathPolicy
 from voice_creator_mcp.app.rate_limit import RateLimiter
 from voice_creator_mcp.app.workspace import WorkspaceProvider
-from voice_creator_mcp.config import Settings
 from voice_creator_mcp.server.core import build_server
 from voice_creator_mcp.server.options import ServerOptions
 

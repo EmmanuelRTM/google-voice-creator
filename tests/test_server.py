@@ -11,12 +11,12 @@ from mcp.server.auth.middleware.bearer_auth import AuthenticatedUser
 from mcp.server.auth.provider import AccessToken
 from mcp.server.mcpserver.exceptions import ResourceError, ToolError
 
+from voice_creator.config import Settings
+from voice_creator.live.runner import LiveEvent
 from voice_creator_mcp.app.inputs import PathPolicy
 from voice_creator_mcp.app.rate_limit import RateLimiter
 from voice_creator_mcp.app.workspace import WorkspaceProvider
 from voice_creator_mcp.auth.scopes import TOOL_SCOPES
-from voice_creator_mcp.config import Settings
-from voice_creator_mcp.live.runner import LiveEvent
 from voice_creator_mcp.server import ServerOptions, build_server, create_server
 
 from conftest import make_tone, wav_bytes

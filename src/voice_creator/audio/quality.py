@@ -11,7 +11,7 @@ import sys
 from array import array
 from dataclasses import asdict, dataclass
 
-from voice_creator_mcp.audio.pcm import PcmAudio
+from voice_creator.audio.pcm import PcmAudio
 
 _FULL_SCALE = 32768.0
 _FLOOR_DBFS = -120.0

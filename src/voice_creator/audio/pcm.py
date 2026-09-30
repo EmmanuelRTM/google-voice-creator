@@ -14,7 +14,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
-from voice_creator_mcp.errors import AudioFormatError
+from voice_creator.errors import AudioFormatError
 
 DEFAULT_SAMPLE_RATE = 24_000
 _RAW_PCM_MIME_TYPES = ("audio/pcm", "audio/l16", "audio/x-raw")

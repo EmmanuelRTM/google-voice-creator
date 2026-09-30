@@ -6,15 +6,15 @@ from collections.abc import Mapping, Sequence
 from dataclasses import asdict, replace
 from typing import Any
 
-from voice_creator_mcp.app.backend import Backend
-from voice_creator_mcp.app.outputs import OutputWriter, WrittenOutput
-from voice_creator_mcp.app.voice_library import VoiceLibrary
-from voice_creator_mcp.dialogue.renderer import DialogueRenderer, ProgressCallback
-from voice_creator_mcp.dialogue.script import parse_script, speakers
-from voice_creator_mcp.errors import LiveConnectionError
-from voice_creator_mcp.live.config import LiveSessionOptions, ReplicatedVoice, build_live_config
-from voice_creator_mcp.live.instructions import LiveMode, build_system_instruction
-from voice_creator_mcp.live.runner import LiveDialogueResult, LiveDialogueRunner, TurnCallback
+from voice_creator.dialogue.renderer import DialogueRenderer, ProgressCallback
+from voice_creator.dialogue.script import parse_script, speakers
+from voice_creator.errors import LiveConnectionError
+from voice_creator.live.config import LiveSessionOptions, ReplicatedVoice, build_live_config
+from voice_creator.live.instructions import LiveMode, build_system_instruction
+from voice_creator.live.runner import LiveDialogueResult, LiveDialogueRunner, TurnCallback
+from voice_creator.studio.backend import Backend
+from voice_creator.studio.outputs import OutputWriter, WrittenOutput
+from voice_creator.studio.voice_library import VoiceLibrary
 
 
 class DialogueStudio:

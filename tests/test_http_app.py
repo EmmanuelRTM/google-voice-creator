@@ -2,9 +2,9 @@ import pytest
 from mcp.server.auth.provider import AccessToken
 from starlette.testclient import TestClient
 
+from voice_creator.config import Settings
+from voice_creator.errors import ConfigError
 from voice_creator_mcp.auth.config import HttpConfig
-from voice_creator_mcp.config import Settings
-from voice_creator_mcp.errors import ConfigError
 from voice_creator_mcp.server.http import build_http_app
 
 OAUTH_ENV = {

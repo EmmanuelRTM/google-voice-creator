@@ -13,7 +13,7 @@ import binascii
 from collections.abc import Sequence
 from pathlib import Path
 
-from voice_creator_mcp.errors import AudioFormatError, PathNotAllowedError
+from voice_creator.errors import AudioFormatError, PathNotAllowedError
 
 MAX_AUDIO_BYTES = 4 * 1024 * 1024
 

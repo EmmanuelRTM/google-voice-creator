@@ -8,9 +8,9 @@ import os
 import sys
 from collections.abc import Sequence
 
+from voice_creator.config import Settings
+from voice_creator.errors import ConfigError
 from voice_creator_mcp.auth.config import HttpConfig
-from voice_creator_mcp.config import Settings
-from voice_creator_mcp.errors import ConfigError
 
 logger = logging.getLogger("voice_creator_mcp")
 

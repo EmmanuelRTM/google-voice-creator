@@ -8,7 +8,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from voice_creator_mcp.errors import ConfigError
+from voice_creator.errors import ConfigError
 
 DEFAULT_TTS_MODEL = "gemini-3.8-flash-tts"
 DEFAULT_LIVE_MODEL = "gemini-3.8-live"

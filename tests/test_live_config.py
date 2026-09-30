@@ -1,7 +1,7 @@
 import pytest
 
-from voice_creator_mcp.errors import LiveConfigError
-from voice_creator_mcp.live.config import (
+from voice_creator.errors import LiveConfigError
+from voice_creator.live.config import (
     GEMINI_38_LIVE,
     GEMINI_38_LIVE_EXTENDED_THINKING,
     LiveSessionOptions,

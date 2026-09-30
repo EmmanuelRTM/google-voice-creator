@@ -15,8 +15,8 @@ from urllib.parse import urlsplit
 
 from mcp.server.transport_security import TransportSecuritySettings
 
+from voice_creator.errors import ConfigError
 from voice_creator_mcp.auth.jwt_verifier import DEFAULT_ALGORITHMS
-from voice_creator_mcp.errors import ConfigError
 
 AUTH_MODES = ("oauth", "none")
 _LOOPBACK_NAMES = {"localhost"}

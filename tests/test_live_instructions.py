@@ -1,6 +1,6 @@
 import pytest
 
-from voice_creator_mcp.live.instructions import build_system_instruction
+from voice_creator.live.instructions import build_system_instruction
 
 
 def test_verbatim_mode_asks_for_word_for_word_delivery() -> None:

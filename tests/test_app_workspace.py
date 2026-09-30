@@ -4,9 +4,9 @@ from pathlib import Path
 
 import pytest
 
+from voice_creator.errors import AuthorizationError
 from voice_creator_mcp.app.workspace import WorkspaceProvider
 from voice_creator_mcp.auth.principal import Principal
-from voice_creator_mcp.errors import AuthorizationError
 
 from fakes import FakeBackend
 

@@ -3,8 +3,8 @@ from pathlib import Path
 
 import pytest
 
-from voice_creator_mcp.config import DEFAULT_LIVE_MODEL, DEFAULT_TTS_MODEL, Settings
-from voice_creator_mcp.errors import ConfigError
+from voice_creator.config import DEFAULT_LIVE_MODEL, DEFAULT_TTS_MODEL, Settings
+from voice_creator.errors import ConfigError
 
 
 def test_defaults_when_environment_is_empty(tmp_path: Path) -> None:

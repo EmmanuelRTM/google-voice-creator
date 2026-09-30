@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
-from voice_creator_mcp.audio.pcm import PcmAudio, write_wav
+from voice_creator.audio.pcm import PcmAudio, write_wav
 
 _UNSAFE = re.compile(r"[^A-Za-z0-9_-]+")
 _MAX_STEM = 80

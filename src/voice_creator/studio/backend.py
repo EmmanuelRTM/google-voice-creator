@@ -9,10 +9,10 @@ from __future__ import annotations
 from functools import cached_property
 from typing import Any, Protocol
 
-from voice_creator_mcp.config import Settings
-from voice_creator_mcp.dialogue.renderer import SpeechSynthesizer
-from voice_creator_mcp.live.runner import LiveConnector
-from voice_creator_mcp.voices.catalog import VoiceCatalog
+from voice_creator.config import Settings
+from voice_creator.dialogue.renderer import SpeechSynthesizer
+from voice_creator.live.runner import LiveConnector
+from voice_creator.voices.catalog import VoiceCatalog
 
 
 class Backend(Protocol):
@@ -34,16 +34,16 @@ class GeminiBackend:
         return genai.Client(api_key=self._settings.require_api_key())
 
     def voice_catalog(self) -> VoiceCatalog:
-        from voice_creator_mcp.gemini.voices_gateway import GeminiVoicesGateway
+        from voice_creator.gemini.voices_gateway import GeminiVoicesGateway
 
         return VoiceCatalog(GeminiVoicesGateway(self._client))
 
     def synthesizer(self) -> SpeechSynthesizer:
-        from voice_creator_mcp.gemini.tts_gateway import GeminiTtsSynthesizer
+        from voice_creator.gemini.tts_gateway import GeminiTtsSynthesizer
 
         return GeminiTtsSynthesizer(self._client, model=self._settings.tts_model)
 
     def live_connector(self) -> LiveConnector:
-        from voice_creator_mcp.gemini.live_gateway import GeminiLiveConnector
+        from voice_creator.gemini.live_gateway import GeminiLiveConnector
 
         return GeminiLiveConnector(self._client)

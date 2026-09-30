@@ -17,7 +17,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from voice_creator_mcp.errors import ProfileError
+from voice_creator.errors import ProfileError
 
 _NAME_PATTERN = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
 _MUTABLE_FIELDS = frozenset(

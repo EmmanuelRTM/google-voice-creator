@@ -14,7 +14,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any, Protocol
 
-from voice_creator_mcp.errors import VoiceApiError
+from voice_creator.errors import VoiceApiError
 
 _VOICE_ID = re.compile(r"^[A-Za-z0-9_\-]+$")
 _HEAVY_FIELDS = ("sample_audio", "usage")

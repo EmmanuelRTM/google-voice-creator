@@ -1,13 +1,19 @@
 [project]
 name = "google-voice-creator"
-version = "0.1.0"
-description = "MCP server for creating dialogue in your own voice with Gemini 3.8 Live and Gemini 3.8 Flash TTS."
+version = "0.2.0"
+description = "Create dialogue in your own voice with Gemini 3.8 Live and Gemini 3.8 Flash TTS: Python library, CLI and MCP server."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "Apache-2.0" }
+# The voice core (`voice_creator`) only needs the official Google GenAI SDK.
 dependencies = [
-    "anyio>=4.9",
     "google-genai>=2.25.0",
+]
+
+[project.optional-dependencies]
+# MCP server, OAuth resource server, HTTP API and realtime relay (`voice_creator_mcp`).
+mcp = [
+    "anyio>=4.9",
     "httpx>=0.27",
     "mcp>=2.2,<3",
     "pydantic>=2.12",
@@ -15,8 +21,6 @@ dependencies = [
     "starlette>=0.48",
     "uvicorn>=0.31.1",
 ]
-
-[project.optional-dependencies]
 dev = [
     "pytest>=9.0",
     "pytest-asyncio>=1.4",
@@ -24,6 +28,7 @@ dev = [
 ]
 
 [project.scripts]
+voice-creator = "voice_creator.cli:main"
 voice-creator-mcp = "voice_creator_mcp.__main__:main"
 
 [build-system]
@@ -31,7 +36,7 @@ requires = ["hatchling>=1.25"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/voice_creator_mcp"]
+packages = ["src/voice_creator", "src/voice_creator_mcp"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -47,5 +52,5 @@ src = ["src", "tests"]
 select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["voice_creator_mcp"]
+known-first-party = ["voice_creator", "voice_creator_mcp"]
 known-local-folder = ["conftest", "fakes"]

@@ -1,0 +1,73 @@
+"""`VoiceCreator`: the Python entry point to the voice core, independent of MCP.
+
+from voice_creator import VoiceCreator
+
+creator = VoiceCreator()                       # reads GEMINI_API_KEY etc.
+creator.create_profile("me", display_name="Me", sample="me.wav", consent="consent.wav")
+creator.voices.replicate_profile("me")
+creator.dialogue.render_dialogue("Me (warm): ¡Hola!", {"Me": "profile:me"})
+"""
+
+from __future__ import annotations
+
+from collections.abc import Callable
+from datetime import datetime
+from pathlib import Path
+from typing import Any
+
+from voice_creator.audio.quality import QualityReport
+from voice_creator.config import Settings
+from voice_creator.studio.backend import Backend, GeminiBackend
+from voice_creator.studio.dialogue_studio import DialogueStudio
+from voice_creator.studio.outputs import OutputWriter
+from voice_creator.studio.voice_library import SamplePurpose, VoiceLibrary
+from voice_creator.voices.profiles import ProfileStore
+
+Recording = bytes | str | Path
+
+
+class VoiceCreator:
+    def __init__(
+        self,
+        settings: Settings | None = None,
+        *,
+        backend: Backend | None = None,
+        clock: Callable[[], datetime] | None = None,
+    ) -> None:
+        self.settings = settings or Settings.from_env()
+        self.backend = backend or GeminiBackend(self.settings)
+        self.voices = VoiceLibrary(ProfileStore(self.settings.data_dir), self.backend, clock=clock)
+        self.dialogue = DialogueStudio(
+            self.voices,
+            self.backend,
+            OutputWriter(self.settings.output_dir, clock=clock),
+            default_live_model=self.settings.live_model,
+        )
+
+    def validate_recording(
+        self, recording: Recording, purpose: SamplePurpose = "live"
+    ) -> QualityReport:
+        return self.voices.validate_recording(_read(recording), purpose)
+
+    def create_profile(
+        self,
+        name: str,
+        *,
+        display_name: str,
+        sample: Recording,
+        consent: Recording,
+        language_code: str | None = None,
+        overwrite: bool = False,
+    ) -> dict[str, Any]:
+        return self.voices.register_profile(
+            name,
+            display_name=display_name,
+            sample_wav=_read(sample),
+            consent_wav=_read(consent),
+            language_code=language_code,
+            overwrite=overwrite,
+        )
+
+
+def _read(recording: Recording) -> bytes:
+    return recording if isinstance(recording, bytes) else Path(recording).expanduser().read_bytes()

@@ -19,7 +19,7 @@ import httpx
 import jwt
 from mcp.server.auth.provider import AccessToken
 
-from voice_creator_mcp.errors import ConfigError
+from voice_creator.errors import ConfigError
 
 logger = logging.getLogger(__name__)
 

@@ -10,8 +10,8 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from jwt.utils import base64url_encode
 
+from voice_creator.errors import ConfigError
 from voice_creator_mcp.auth.jwt_verifier import JwtTokenVerifier, discover_jwks_uri
-from voice_creator_mcp.errors import ConfigError
 
 ISSUER = "https://auth.example.com/"
 AUDIENCE = "https://voice.example.com/mcp"

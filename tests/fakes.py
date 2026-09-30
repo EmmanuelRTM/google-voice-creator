@@ -8,9 +8,9 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from typing import Any
 
-from voice_creator_mcp.audio.pcm import PcmAudio
-from voice_creator_mcp.live.runner import LiveEvent
-from voice_creator_mcp.voices.catalog import VoiceCatalog
+from voice_creator.audio.pcm import PcmAudio
+from voice_creator.live.runner import LiveEvent
+from voice_creator.voices.catalog import VoiceCatalog
 
 from conftest import make_tone
 

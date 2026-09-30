@@ -10,7 +10,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Any
 
-from voice_creator_mcp.live.runner import LiveEvent
+from voice_creator.live.runner import LiveEvent
 
 
 class GeminiLiveConnector:

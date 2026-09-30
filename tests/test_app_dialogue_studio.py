@@ -3,13 +3,13 @@ from pathlib import Path
 
 import pytest
 
-from voice_creator_mcp.app.dialogue_studio import DialogueStudio
-from voice_creator_mcp.app.outputs import OutputWriter
-from voice_creator_mcp.app.voice_library import VoiceLibrary
-from voice_creator_mcp.audio.pcm import read_wav
-from voice_creator_mcp.errors import LiveConfigError
-from voice_creator_mcp.live.runner import LiveEvent
-from voice_creator_mcp.voices.profiles import ProfileStore
+from voice_creator.audio.pcm import read_wav
+from voice_creator.errors import LiveConfigError
+from voice_creator.live.runner import LiveEvent
+from voice_creator.studio.dialogue_studio import DialogueStudio
+from voice_creator.studio.outputs import OutputWriter
+from voice_creator.studio.voice_library import VoiceLibrary
+from voice_creator.voices.profiles import ProfileStore
 
 from conftest import make_tone, wav_bytes
 from fakes import FakeBackend, FakeConnector, FakeSession, FakeVoicesGateway, audio_event

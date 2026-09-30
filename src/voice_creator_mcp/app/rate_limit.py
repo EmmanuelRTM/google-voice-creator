@@ -8,7 +8,7 @@ import time
 from collections import defaultdict, deque
 from collections.abc import Callable
 
-from voice_creator_mcp.errors import RateLimitError
+from voice_creator.errors import RateLimitError
 
 
 class RateLimiter:

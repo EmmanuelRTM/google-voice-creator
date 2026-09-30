@@ -3,8 +3,8 @@ from pathlib import Path
 
 import pytest
 
+from voice_creator.errors import AudioFormatError, PathNotAllowedError
 from voice_creator_mcp.app.inputs import PathPolicy, load_audio_input
-from voice_creator_mcp.errors import AudioFormatError, PathNotAllowedError
 
 
 def test_unrestricted_policy_resolves_any_path(tmp_path: Path) -> None:

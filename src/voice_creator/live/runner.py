@@ -15,9 +15,9 @@ from contextlib import AbstractAsyncContextManager, AsyncExitStack
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
-from voice_creator_mcp.audio.pcm import PcmAudio, concatenate, decode_audio_payload
-from voice_creator_mcp.errors import LiveConnectionError, LiveSessionError
-from voice_creator_mcp.live.config import LiveSessionOptions, build_live_config
+from voice_creator.audio.pcm import PcmAudio, concatenate, decode_audio_payload
+from voice_creator.errors import LiveConnectionError, LiveSessionError
+from voice_creator.live.config import LiveSessionOptions, build_live_config
 
 IN_PROGRESS = "IN_PROGRESS"
 

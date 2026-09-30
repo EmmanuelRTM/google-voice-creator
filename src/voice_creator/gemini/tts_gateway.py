@@ -11,8 +11,8 @@ from __future__ import annotations
 import base64
 from typing import Any
 
-from voice_creator_mcp.audio.pcm import DEFAULT_SAMPLE_RATE, PcmAudio, decode_audio_payload
-from voice_creator_mcp.errors import SynthesisError
+from voice_creator.audio.pcm import DEFAULT_SAMPLE_RATE, PcmAudio, decode_audio_payload
+from voice_creator.errors import SynthesisError
 
 
 class GeminiTtsSynthesizer:

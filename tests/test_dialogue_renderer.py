@@ -1,8 +1,8 @@
 import pytest
 
-from voice_creator_mcp.dialogue.renderer import DialogueRenderer
-from voice_creator_mcp.dialogue.script import DialogueLine
-from voice_creator_mcp.errors import AudioFormatError, CastError
+from voice_creator.dialogue.renderer import DialogueRenderer
+from voice_creator.dialogue.script import DialogueLine
+from voice_creator.errors import AudioFormatError, CastError
 
 from conftest import make_tone
 from fakes import FakeSynthesizer

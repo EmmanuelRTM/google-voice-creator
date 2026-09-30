@@ -12,7 +12,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from voice_creator_mcp.errors import LiveConfigError
+from voice_creator.errors import LiveConfigError
 
 GEMINI_38_LIVE = "gemini-3.8-live"
 GEMINI_38_LIVE_EXTENDED_THINKING = "gemini-3.8-live-extended-thinking"

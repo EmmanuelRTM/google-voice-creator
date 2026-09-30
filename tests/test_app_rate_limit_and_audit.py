@@ -3,10 +3,10 @@ import logging
 
 import pytest
 
+from voice_creator.errors import RateLimitError
 from voice_creator_mcp.app.audit import AuditLog
 from voice_creator_mcp.app.rate_limit import RateLimiter
 from voice_creator_mcp.auth.principal import Principal
-from voice_creator_mcp.errors import RateLimitError
 
 
 class FakeClock:

@@ -1,7 +1,7 @@
 import pytest
 
+from voice_creator.errors import ConfigError
 from voice_creator_mcp.auth.config import HttpConfig
-from voice_creator_mcp.errors import ConfigError
 
 OAUTH_ENV = {
     "VOICE_CREATOR_OAUTH_ISSUER": "https://auth.example.com/",

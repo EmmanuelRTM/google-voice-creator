@@ -10,9 +10,9 @@ from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Protocol
 
-from voice_creator_mcp.audio.pcm import PcmAudio, concatenate
-from voice_creator_mcp.dialogue.script import DialogueLine, speakers, strip_vocal_tags
-from voice_creator_mcp.errors import CastError
+from voice_creator.audio.pcm import PcmAudio, concatenate
+from voice_creator.dialogue.script import DialogueLine, speakers, strip_vocal_tags
+from voice_creator.errors import CastError
 
 MAX_GAP_MS = 10_000
 

@@ -3,9 +3,9 @@ from pathlib import Path
 
 import pytest
 
-from voice_creator_mcp.app.voice_library import VoiceLibrary
-from voice_creator_mcp.errors import AudioFormatError, CastError
-from voice_creator_mcp.voices.profiles import ProfileStore
+from voice_creator.errors import AudioFormatError, CastError
+from voice_creator.studio.voice_library import VoiceLibrary
+from voice_creator.voices.profiles import ProfileStore
 
 from conftest import make_tone, wav_bytes
 from fakes import FakeBackend, FakeVoicesGateway

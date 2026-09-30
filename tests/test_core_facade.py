@@ -1,0 +1,52 @@
+import subprocess
+import sys
+from datetime import UTC, datetime
+from pathlib import Path
+
+import pytest
+
+from voice_creator import VoiceCreator
+from voice_creator.config import Settings
+
+from conftest import make_tone, wav_bytes
+from fakes import FakeBackend, FakeVoicesGateway
+
+NOW = datetime(2026, 9, 30, 12, 0, tzinfo=UTC)
+
+
+@pytest.fixture
+def creator(tmp_path: Path) -> VoiceCreator:
+    settings = Settings.from_env({"VOICE_CREATOR_DATA_DIR": str(tmp_path / "data")}, home=tmp_path)
+    backend = FakeBackend(
+        voices=FakeVoicesGateway(create_response={"id": "voice_me", "type": "replicated"})
+    )
+    return VoiceCreator(settings, backend=backend, clock=lambda: NOW)
+
+
+def test_core_package_does_not_depend_on_mcp() -> None:
+    code = (
+        "import sys, voice_creator, voice_creator.studio.dialogue_studio, "
+        "voice_creator.live.runner, voice_creator.gemini.live_gateway, voice_creator.cli; "
+        "bad = [m for m in ('mcp', 'starlette', 'uvicorn', 'jwt') if m in sys.modules]; "
+        "assert not bad, bad"
+    )
+    subprocess.run([sys.executable, "-c", code], check=True)
+
+
+def test_facade_accepts_paths_or_bytes(creator: VoiceCreator, tmp_path: Path) -> None:
+    sample = tmp_path / "sample.wav"
+    sample.write_bytes(wav_bytes(make_tone(15.0)))
+
+    assert creator.validate_recording(sample).ok
+    created = creator.create_profile(
+        "me", display_name="Me", sample=str(sample), consent=wav_bytes(make_tone(6.0))
+    )
+    replicated = creator.voices.replicate_profile("me")
+
+    assert created["profile"]["name"] == "me"
+    assert replicated["voice_id"] == "voice_me"
+
+
+def test_facade_renders_dialogue(creator: VoiceCreator) -> None:
+    result = creator.dialogue.render_dialogue("Ana: Hola.", {"Ana": "Kore"}, output_name="t")
+    assert Path(result["audio_path"]).exists()

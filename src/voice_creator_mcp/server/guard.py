@@ -22,15 +22,15 @@ from mcp.server.mcpserver import Context, MCPServer
 from mcp.server.mcpserver.exceptions import ResourceError, ToolError
 from mcp.types import ToolAnnotations
 
-from voice_creator_mcp.app.audit import Outcome
-from voice_creator_mcp.app.workspace import Workspace, WorkspaceProvider
-from voice_creator_mcp.auth.principal import Principal, current_principal
-from voice_creator_mcp.auth.scopes import BASELINE_SCOPES, required_scopes
-from voice_creator_mcp.errors import (
+from voice_creator.errors import (
     AuthorizationError,
     RateLimitError,
     VoiceCreatorError,
 )
+from voice_creator_mcp.app.audit import Outcome
+from voice_creator_mcp.app.workspace import Workspace, WorkspaceProvider
+from voice_creator_mcp.auth.principal import Principal, current_principal
+from voice_creator_mcp.auth.scopes import BASELINE_SCOPES, required_scopes
 from voice_creator_mcp.server.options import ServerOptions
 
 logger = logging.getLogger(__name__)
