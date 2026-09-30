@@ -17,3 +17,6 @@ build/
 .voice-creator/
 voice-data/
 *.wav
+
+# Example dependencies
+node_modules/

@@ -1,0 +1,19 @@
+{
+  "name": "voice-creator",
+  "version": "0.2.0",
+  "description": "Create dialogue in your own cloned voice with Gemini 3.8 Live and Gemini TTS.",
+  "contextFileName": "GEMINI.md",
+  "mcpServers": {
+    "voice-creator": {
+      "command": "voice-creator-mcp",
+      "args": ["--transport", "stdio"],
+      "env": {
+        "GEMINI_API_KEY": "$GEMINI_API_KEY",
+        "VOICE_CREATOR_ALLOWED_DIRS": "$HOME/voice-recordings"
+      },
+      "timeout": 300000,
+      "trust": false,
+      "excludeTools": ["voice_delete_profile", "voice_delete_gemini_voice"]
+    }
+  }
+}

@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Talk in my voice</title>
+    <style>
+      body { font-family: system-ui, sans-serif; max-width: 40rem; margin: 2rem auto; padding: 0 1rem; }
+      #log { white-space: pre-wrap; background: #f4f4f5; padding: 1rem; border-radius: 0.5rem; min-height: 8rem; }
+    </style>
+  </head>
+  <body>
+    <h1>Talk in my voice</h1>
+    <p>Gemini 3.8 Live answers in the cloned voice of the profile in <code>?profile=</code>.</p>
+    <button id="start">Start</button>
+    <button id="stop" disabled>Stop</button>
+    <div id="log" aria-live="polite"></div>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>
