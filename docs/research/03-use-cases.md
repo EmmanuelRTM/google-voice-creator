@@ -8,14 +8,14 @@ Each use case is mapped to the model family that fits and to the MCP tool in thi
 
 | # | Use case | Best fit | MCP tool | Notes |
 |---|---|---|---|---|
-| 1 | Scripted dialogue where you play one role and another voice plays the rest | TTS | `render_dialogue` with `{"You": "profile:me", "Ana": "Kore"}` | Exact words, per-line `(style)` and `<tags>` |
-| 2 | You talking with yourself (debate, inner monologue, two moods) | TTS | `render_dialogue` with both speakers on `profile:me` and different styles | Style carries the contrast, the voice stays the same |
-| 3 | Podcast or co-host episode with a designed partner | TTS | `design_voice`, then `render_dialogue` | A designed voice needs `store=true` |
-| 4 | Improvised replies "as you" to prompts | Live | `live_dialogue(mode="improvise")` | Natural phrasing, but not word-exact |
-| 5 | Reading your lines through the Live engine for a live feel | Live | `live_dialogue(mode="verbatim")` | May paraphrase; use TTS when wording matters |
-| 6 | Dialogue that needs reasoning (plan a trip, explain a proof) narrated in your voice | Live-ET | `live_dialogue(model="gemini-3.8-live-extended-thinking", thinking_level="medium")` | Speaks fillers while it thinks, so wait for IDLE |
-| 7 | Multilingual versions of the same scene | TTS or Live | `render_dialogue(language="fr-FR")` or `live_dialogue(language_code=…)` | Expect some accent carry-over |
-| 8 | Audiobook or long narration in your voice | TTS | `render_dialogue` with one speaker and many lines | Line-by-line rendering limits voice drift |
+| 1 | Scripted dialogue where you play one role and another voice plays the rest | TTS | `voice_render_dialogue` with `{"You": "profile:me", "Ana": "Kore"}` | Exact words, per-line `(style)` and `<tags>` |
+| 2 | You talking with yourself (debate, inner monologue, two moods) | TTS | `voice_render_dialogue` with both speakers on `profile:me` and different styles | Style carries the contrast, the voice stays the same |
+| 3 | Podcast or co-host episode with a designed partner | TTS | `voice_design_gemini_voice`, then `voice_render_dialogue` | A designed voice needs `store=true` |
+| 4 | Improvised replies "as you" to prompts | Live | `voice_live_dialogue(mode="improvise")` | Natural phrasing, but not word-exact |
+| 5 | Reading your lines through the Live engine for a live feel | Live | `voice_live_dialogue(mode="verbatim")` | May paraphrase; use TTS when wording matters |
+| 6 | Dialogue that needs reasoning (plan a trip, explain a proof) narrated in your voice | Live-ET | `voice_live_dialogue(model="gemini-3.8-live-extended-thinking", thinking_level="medium")` | Speaks fillers while it thinks, so wait for IDLE |
+| 7 | Multilingual versions of the same scene | TTS or Live | `voice_render_dialogue(language="fr-FR")` or `voice_live_dialogue(language_code=…)` | Expect some accent carry-over |
+| 8 | Audiobook or long narration in your voice | TTS | `voice_render_dialogue` with one speaker and many lines | Line-by-line rendering limits voice drift |
 
 ## Broader use cases for a replicated voice with 3.8 Live
 

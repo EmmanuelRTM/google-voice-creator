@@ -2,8 +2,8 @@ import base64
 
 import pytest
 
-from voice_creator_mcp.errors import VoiceApiError
-from voice_creator_mcp.voices.catalog import VoiceCatalog, normalize_voice_id
+from voice_creator.errors import VoiceApiError
+from voice_creator.voices.catalog import VoiceCatalog, normalize_voice_id
 
 from fakes import FakeVoicesGateway
 

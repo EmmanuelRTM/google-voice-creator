@@ -19,8 +19,10 @@ Research date: **2026-09-30** (15 days after the 2026-09-15 launch).
 3. **For "dialogue in my voice", use both.** Use TTS to get your exact words with
    line-by-line direction (scripts, podcasts, two-person scenes). Use Live when the
    model should *improvise* as you, and Extended Thinking when it needs to reason or
-   call tools while it keeps talking. The MCP server in this repo wraps both
-   ([../../README.md](../../README.md)).
+   call tools while it keeps talking. This repo wraps both in a Python library and CLI,
+   an MCP server, and Google's official integration paths (ADK, Genkit, Gemini CLI,
+   ephemeral tokens, server-to-server realtime)
+   ([../../README.md](../../README.md), [07-google-integration.md](07-google-integration.md)).
 4. **Extended Thinking changes the session contract.** `turn_complete` no longer means
    the model is idle. Wait for `interaction_status == IDLE`. `thinking_level` accepts only
    `low|medium|high` (`minimal` errors), all tools must be `NON_BLOCKING`, and the
@@ -39,6 +41,8 @@ Research date: **2026-09-30** (15 days after the 2026-09-15 launch).
 | [03-use-cases.md](03-use-cases.md) | Use cases for your voice, mapped to model and MCP tool |
 | [04-edge-cases.md](04-edge-cases.md) | Edge cases by category, with how the MCP server handles each |
 | [05-sources.md](05-sources.md) | Sources, evidence levels and open questions |
+| [06-mcp-and-auth.md](06-mcp-and-auth.md) | MCP 2026-07-28 and OAuth best practices, threat model, scopes, Gemini credentials |
+| [07-google-integration.md](07-google-integration.md) | Google's integration paths (SDK, ephemeral tokens, server-to-server, ADK, Genkit, Gemini CLI, Interactions `mcp_server`) and how each is implemented and verified |
 
 ## How this research was done (read before relying on it)
 

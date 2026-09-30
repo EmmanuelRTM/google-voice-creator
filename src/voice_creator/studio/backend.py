@@ -1,0 +1,66 @@
+"""The ports the application layer needs, and their lazy Gemini implementation.
+
+The Gemini client is only created when a tool actually calls Gemini, so offline
+tools (sample validation, script preview, profile management) work without a key.
+"""
+
+from __future__ import annotations
+
+from functools import cached_property
+from typing import Any, Protocol
+
+from voice_creator.config import Settings
+from voice_creator.dialogue.renderer import SpeechSynthesizer
+from voice_creator.live.runner import LiveConnector
+from voice_creator.live.tokens import LIVE_TOKEN_API_VERSION, TokenGateway
+from voice_creator.voices.catalog import VoiceCatalog
+
+
+class Backend(Protocol):
+    def voice_catalog(self) -> VoiceCatalog: ...
+
+    def synthesizer(self) -> SpeechSynthesizer: ...
+
+    def live_connector(self) -> LiveConnector: ...
+
+    def token_gateway(self) -> TokenGateway: ...
+
+
+class GeminiBackend:
+    def __init__(self, settings: Settings) -> None:
+        self._settings = settings
+
+    @cached_property
+    def _client(self) -> Any:
+        from google import genai
+
+        return genai.Client(api_key=self._settings.require_api_key())
+
+    @cached_property
+    def _alpha_client(self) -> Any:
+        from google import genai
+
+        return genai.Client(
+            api_key=self._settings.require_api_key(),
+            http_options={"api_version": LIVE_TOKEN_API_VERSION},
+        )
+
+    def voice_catalog(self) -> VoiceCatalog:
+        from voice_creator.gemini.voices_gateway import GeminiVoicesGateway
+
+        return VoiceCatalog(GeminiVoicesGateway(self._client))
+
+    def synthesizer(self) -> SpeechSynthesizer:
+        from voice_creator.gemini.tts_gateway import GeminiTtsSynthesizer
+
+        return GeminiTtsSynthesizer(self._client, model=self._settings.tts_model)
+
+    def live_connector(self) -> LiveConnector:
+        from voice_creator.gemini.live_gateway import GeminiLiveConnector
+
+        return GeminiLiveConnector(self._client)
+
+    def token_gateway(self) -> TokenGateway:
+        from voice_creator.gemini.token_gateway import GeminiTokenGateway
+
+        return GeminiTokenGateway(self._alpha_client)

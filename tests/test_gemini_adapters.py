@@ -7,11 +7,11 @@ from typing import Any
 
 import pytest
 
-from voice_creator_mcp.errors import SynthesisError
-from voice_creator_mcp.gemini.live_gateway import GeminiLiveConnector, message_to_events
-from voice_creator_mcp.gemini.tts_gateway import GeminiTtsSynthesizer
-from voice_creator_mcp.gemini.voices_gateway import GeminiVoicesGateway
-from voice_creator_mcp.live.runner import LiveEvent
+from voice_creator.errors import SynthesisError
+from voice_creator.gemini.live_gateway import GeminiLiveConnector, message_to_events
+from voice_creator.gemini.tts_gateway import GeminiTtsSynthesizer
+from voice_creator.gemini.voices_gateway import GeminiVoicesGateway
+from voice_creator.live.runner import LiveEvent
 
 from conftest import make_tone, wav_bytes
 
@@ -140,6 +140,7 @@ def test_tts_without_audio_raises() -> None:
 def server_message(**server_content: Any) -> Any:
     defaults = dict(
         model_turn=None,
+        input_transcription=None,
         output_transcription=None,
         interrupted=None,
         turn_complete=None,
@@ -206,3 +207,74 @@ async def test_live_connector_wraps_the_sdk_session() -> None:
     assert captured == {"model": "gemini-3.8-live", "config": {"a": 1}}
     assert sdk_session.sent == ["hello"]
     assert events == [LiveEvent(turn_complete=True)]
+
+
+def test_message_to_events_maps_input_transcripts_and_resumption() -> None:
+    message = server_message(input_transcription=NS(text="Hola"))
+    message.session_resumption_update = NS(new_handle="h-2", resumable=True)
+
+    assert message_to_events(message) == [
+        LiveEvent(input_transcript="Hola"),
+        LiveEvent(resumption_handle="h-2"),
+    ]
+
+
+def test_non_resumable_updates_are_ignored() -> None:
+    message = NS(
+        server_content=None,
+        go_away=None,
+        session_resumption_update=NS(new_handle="", resumable=False),
+    )
+    assert message_to_events(message) == []
+
+
+class RealtimeSdkSession(FakeSdkSession):
+    def __init__(self) -> None:
+        super().__init__()
+        self.realtime: list[dict] = []
+
+    async def send_realtime_input(self, **kwargs) -> None:  # type: ignore[override]
+        self.realtime.append(kwargs)
+
+
+async def test_live_session_streams_audio_and_activity_signals() -> None:
+    sdk_session = RealtimeSdkSession()
+
+    @asynccontextmanager
+    async def connect(*, model: str, config: dict[str, Any]):
+        yield sdk_session
+
+    async with GeminiLiveConnector(NS(aio=NS(live=NS(connect=connect)))).connect("m", {}) as s:
+        await s.send_audio(b"\x00\x01", 16_000)
+        await s.send_activity_start()
+        await s.send_activity_end()
+        await s.send_audio_stream_end()
+
+    audio = sdk_session.realtime[0]["audio"]
+    assert (audio.data, audio.mime_type) == (b"\x00\x01", "audio/pcm;rate=16000")
+    assert sdk_session.realtime[1:] == [
+        {"activity_start": {}},
+        {"activity_end": {}},
+        {"audio_stream_end": True},
+    ]
+
+
+def test_token_connector_uses_the_ephemeral_token_on_v1alpha() -> None:
+    from voice_creator.gemini.live_gateway import GeminiLiveConnector, connector_for_token
+    from voice_creator.live.tokens import LiveToken
+
+    token = LiveToken(
+        token="auth_tokens/abc",
+        model="gemini-3.8-live",
+        api_version="v1alpha",
+        uses=1,
+        expire_time="2026-09-30T12:30:00+00:00",
+        new_session_expire_time="2026-09-30T12:01:00+00:00",
+    )
+
+    connector = connector_for_token(token)
+
+    assert isinstance(connector, GeminiLiveConnector)
+    api_client = connector._live._api_client
+    assert api_client.api_key == "auth_tokens/abc"
+    assert api_client._http_options.api_version == "v1alpha"

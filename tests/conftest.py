@@ -10,7 +10,7 @@ from collections.abc import Callable
 
 import pytest
 
-from voice_creator_mcp.audio.pcm import PcmAudio
+from voice_creator.audio.pcm import PcmAudio
 
 
 def make_tone(

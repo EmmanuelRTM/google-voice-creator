@@ -1,8 +1,8 @@
 import pytest
 
-from voice_creator_mcp.dialogue.renderer import DialogueRenderer
-from voice_creator_mcp.dialogue.script import DialogueLine
-from voice_creator_mcp.errors import AudioFormatError, CastError
+from voice_creator.dialogue.renderer import DialogueRenderer
+from voice_creator.dialogue.script import DialogueLine
+from voice_creator.errors import AudioFormatError, CastError
 
 from conftest import make_tone
 from fakes import FakeSynthesizer
@@ -82,3 +82,15 @@ def test_mixed_sample_rates_are_reported() -> None:
 def test_transcript_strips_vocal_tags() -> None:
     result = DialogueRenderer(FakeSynthesizer()).render(LINES, {"Mario": "a", "Ana": "b"})
     assert result.transcript() == "Mario: Hello there friend\nAna: Hi"
+
+
+def test_progress_is_reported_after_each_line() -> None:
+    progress: list[tuple[int, int]] = []
+
+    DialogueRenderer(FakeSynthesizer()).render(
+        LINES,
+        {"Mario": "a", "Ana": "b"},
+        on_progress=lambda done, total: progress.append((done, total)),
+    )
+
+    assert progress == [(1, 2), (2, 2)]

@@ -3,8 +3,8 @@ from pathlib import Path
 
 import pytest
 
-from voice_creator_mcp.app.outputs import OutputWriter
-from voice_creator_mcp.audio.pcm import read_wav
+from voice_creator.audio.pcm import read_wav
+from voice_creator.studio.outputs import OutputWriter
 
 from conftest import make_tone
 

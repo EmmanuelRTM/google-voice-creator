@@ -429,11 +429,10 @@ wheels = [
 
 [[package]]
 name = "google-voice-creator"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "." }
 dependencies = [
     { name = "google-genai" },
-    { name = "mcp" },
 ]
 
 [package.optional-dependencies]
@@ -442,16 +441,31 @@ dev = [
     { name = "pytest-asyncio" },
     { name = "ruff" },
 ]
+mcp = [
+    { name = "anyio" },
+    { name = "httpx" },
+    { name = "mcp" },
+    { name = "pydantic" },
+    { name = "pyjwt", extra = ["crypto"] },
+    { name = "starlette" },
+    { name = "uvicorn" },
+]
 
 [package.metadata]
 requires-dist = [
+    { name = "anyio", marker = "extra == 'mcp'", specifier = ">=4.9" },
     { name = "google-genai", specifier = ">=2.25.0" },
-    { name = "mcp", specifier = ">=2.2,<3" },
+    { name = "httpx", marker = "extra == 'mcp'", specifier = ">=0.27" },
+    { name = "mcp", marker = "extra == 'mcp'", specifier = ">=2.2,<3" },
+    { name = "pydantic", marker = "extra == 'mcp'", specifier = ">=2.12" },
+    { name = "pyjwt", extras = ["crypto"], marker = "extra == 'mcp'", specifier = ">=2.10.1" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=9.0" },
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=1.4" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.16" },
+    { name = "starlette", marker = "extra == 'mcp'", specifier = ">=0.48" },
+    { name = "uvicorn", marker = "extra == 'mcp'", specifier = ">=0.31.1" },
 ]
-provides-extras = ["dev"]
+provides-extras = ["mcp", "dev"]
 
 [[package]]
 name = "h11"

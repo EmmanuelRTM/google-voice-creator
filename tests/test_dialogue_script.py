@@ -1,12 +1,12 @@
 import pytest
 
-from voice_creator_mcp.dialogue.script import (
+from voice_creator.dialogue.script import (
     DialogueLine,
     parse_script,
     speakers,
     strip_vocal_tags,
 )
-from voice_creator_mcp.errors import ScriptParseError
+from voice_creator.errors import ScriptParseError
 
 
 def test_parses_speakers_text_and_optional_style() -> None:

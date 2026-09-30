@@ -1,0 +1,14 @@
+{
+  "name": "voice-creator-browser-example",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite"
+  },
+  "dependencies": {
+    "@google/genai": "^2.24.0"
+  },
+  "devDependencies": {
+    "vite": "^7.0.0"
+  }
+}

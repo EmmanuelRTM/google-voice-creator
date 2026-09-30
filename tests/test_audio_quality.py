@@ -1,7 +1,7 @@
 import pytest
 
-from voice_creator_mcp.audio.pcm import PcmAudio, concatenate
-from voice_creator_mcp.audio.quality import (
+from voice_creator.audio.pcm import PcmAudio, concatenate
+from voice_creator.audio.quality import (
     CONSENT_RECORDING,
     LIVE_VOICE_SAMPLE,
     VOICES_API_SOURCE,

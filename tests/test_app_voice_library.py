@@ -3,9 +3,9 @@ from pathlib import Path
 
 import pytest
 
-from voice_creator_mcp.app.voice_library import VoiceLibrary
-from voice_creator_mcp.errors import AudioFormatError, CastError
-from voice_creator_mcp.voices.profiles import ProfileStore
+from voice_creator.errors import AudioFormatError, CastError
+from voice_creator.studio.voice_library import VoiceLibrary
+from voice_creator.voices.profiles import ProfileStore
 
 from conftest import make_tone, wav_bytes
 from fakes import FakeBackend, FakeVoicesGateway
@@ -26,38 +26,34 @@ def library(tmp_path: Path, backend: FakeBackend) -> VoiceLibrary:
 
 
 @pytest.fixture
-def recordings(tmp_path: Path) -> tuple[Path, Path]:
-    sample = tmp_path / "sample.wav"
-    consent = tmp_path / "consent.wav"
-    sample.write_bytes(wav_bytes(make_tone(15.0)))
-    consent.write_bytes(wav_bytes(make_tone(6.0)))
-    return sample, consent
+def recordings() -> tuple[bytes, bytes]:
+    return wav_bytes(make_tone(15.0)), wav_bytes(make_tone(6.0))
 
 
-def register(library: VoiceLibrary, recordings: tuple[Path, Path], **kwargs):
+def register(library: VoiceLibrary, recordings: tuple[bytes, bytes], **kwargs):
     sample, consent = recordings
     return library.register_profile(
-        "mario", display_name="Mario", sample_path=sample, consent_path=consent, **kwargs
+        "mario", display_name="Mario", sample_wav=sample, consent_wav=consent, **kwargs
     )
 
 
 def test_validate_sample_reports_against_the_chosen_purpose(
-    library: VoiceLibrary, recordings: tuple[Path, Path]
+    library: VoiceLibrary, recordings: tuple[bytes, bytes]
 ) -> None:
     sample, _ = recordings
-    assert library.validate_sample(sample, "live").ok
-    assert library.validate_sample(sample, "voices_api").ok
+    assert library.validate_recording(sample, "live").ok
+    assert library.validate_recording(sample, "voices_api").ok
 
 
 def test_validate_sample_rejects_unknown_purpose(
-    library: VoiceLibrary, recordings: tuple[Path, Path]
+    library: VoiceLibrary, recordings: tuple[bytes, bytes]
 ) -> None:
     with pytest.raises(ValueError, match="purpose"):
-        library.validate_sample(recordings[0], "podcast")  # type: ignore[arg-type]
+        library.validate_recording(recordings[0], "podcast")  # type: ignore[arg-type]
 
 
 def test_register_profile_stores_recordings_and_reports(
-    library: VoiceLibrary, recordings: tuple[Path, Path]
+    library: VoiceLibrary, recordings: tuple[bytes, bytes]
 ) -> None:
     result = register(library, recordings, language_code="es-MX")
 
@@ -68,21 +64,19 @@ def test_register_profile_stores_recordings_and_reports(
     assert [profile["name"] for profile in library.list_profiles()] == ["mario"]
 
 
-def test_register_profile_rejects_invalid_sample(library: VoiceLibrary, tmp_path: Path) -> None:
-    short = tmp_path / "short.wav"
-    short.write_bytes(wav_bytes(make_tone(5.0)))
-    consent = tmp_path / "consent.wav"
-    consent.write_bytes(wav_bytes(make_tone(6.0)))
-
+def test_register_profile_rejects_invalid_sample(library: VoiceLibrary) -> None:
     with pytest.raises(AudioFormatError, match="voice sample"):
         library.register_profile(
-            "mario", display_name="Mario", sample_path=short, consent_path=consent
+            "mario",
+            display_name="Mario",
+            sample_wav=wav_bytes(make_tone(5.0)),
+            consent_wav=wav_bytes(make_tone(6.0)),
         )
     assert library.list_profiles() == []
 
 
 def test_replicate_profile_stores_the_remote_voice_id(
-    library: VoiceLibrary, recordings: tuple[Path, Path], backend: FakeBackend
+    library: VoiceLibrary, recordings: tuple[bytes, bytes], backend: FakeBackend
 ) -> None:
     register(library, recordings)
 
@@ -94,7 +88,7 @@ def test_replicate_profile_stores_the_remote_voice_id(
 
 
 def test_replicate_profile_stateless_stores_key_and_expiry(
-    library: VoiceLibrary, recordings: tuple[Path, Path], backend: FakeBackend
+    library: VoiceLibrary, recordings: tuple[bytes, bytes], backend: FakeBackend
 ) -> None:
     backend.voices.create_response = {
         "key": "voicekey_abc",
@@ -109,7 +103,7 @@ def test_replicate_profile_stateless_stores_key_and_expiry(
 
 
 def test_expired_voice_key_cannot_be_used(
-    tmp_path: Path, backend: FakeBackend, recordings: tuple[Path, Path]
+    tmp_path: Path, backend: FakeBackend, recordings: tuple[bytes, bytes]
 ) -> None:
     backend.voices.create_response = {
         "key": "voicekey_abc",
@@ -125,10 +119,10 @@ def test_expired_voice_key_cannot_be_used(
 
 
 def test_profile_without_remote_voice_explains_next_step(
-    library: VoiceLibrary, recordings: tuple[Path, Path]
+    library: VoiceLibrary, recordings: tuple[bytes, bytes]
 ) -> None:
     register(library, recordings)
-    with pytest.raises(CastError, match="replicate_voice_profile"):
+    with pytest.raises(CastError, match="voice_replicate_profile"):
         library.resolve_voice("profile:mario")
 
 
@@ -143,7 +137,7 @@ def test_blank_reference_is_rejected(library: VoiceLibrary) -> None:
 
 
 def test_live_voice_uses_cached_signature(
-    library: VoiceLibrary, recordings: tuple[Path, Path]
+    library: VoiceLibrary, recordings: tuple[bytes, bytes]
 ) -> None:
     register(library, recordings)
     library.remember_consent_signature("mario", "sig-1")
@@ -151,15 +145,15 @@ def test_live_voice_uses_cached_signature(
     voice = library.live_voice("mario")
 
     assert voice.consent_signature == "sig-1"
-    assert voice.sample_wav == recordings[0].read_bytes()
-    assert voice.consent_wav == recordings[1].read_bytes()
+    assert voice.sample_wav == recordings[0]
+    assert voice.consent_wav == recordings[1]
 
     library.forget_consent_signature("mario")
     assert library.live_voice("mario").consent_signature is None
 
 
 def test_delete_profile_can_delete_the_remote_voice(
-    library: VoiceLibrary, recordings: tuple[Path, Path], backend: FakeBackend
+    library: VoiceLibrary, recordings: tuple[bytes, bytes], backend: FakeBackend
 ) -> None:
     register(library, recordings)
     library.replicate_profile("mario")

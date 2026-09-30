@@ -117,7 +117,7 @@ Per session, in `LiveConnectConfig.speech_config.voice_config.replicated_voice_c
 | **Same mic and room** for the sample and consent | Helps the speaker-verification check pass [3P] |
 | Varied sentences, questions, and a neutral-to-warm tone | Emotional extremes bleed into every output [3P] |
 | Speak in the language you'll generate most | Cross-language output can carry your accent, or drift (see [04](04-edge-cases.md)) |
-| Peaks around -6 dBFS, no clipping; trim long silences | The MCP `validate_voice_sample` tool checks these |
+| Peaks around -6 dBFS, no clipping; trim long silences | The MCP `voice_validate_recording` tool checks these |
 
 Convert anything else first:
 

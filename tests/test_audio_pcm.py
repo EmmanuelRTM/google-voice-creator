@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from voice_creator_mcp.audio.pcm import (
+from voice_creator.audio.pcm import (
     PcmAudio,
     concatenate,
     decode_audio_payload,
@@ -13,7 +13,7 @@ from voice_creator_mcp.audio.pcm import (
     to_wav_bytes,
     write_wav,
 )
-from voice_creator_mcp.errors import AudioFormatError
+from voice_creator.errors import AudioFormatError
 
 from conftest import make_tone, wav_bytes
 
