@@ -198,3 +198,69 @@ class FakeClientChannel:
 
     def kinds(self) -> list[str]:
         return [event.kind for event in self.events]
+
+
+# --- Conversational Live double (diagnostics) -----------------------------------------
+
+
+@dataclass
+class FakeReplyingSession:
+    """Answers every text prompt, or the end of an audio stream, with one spoken turn."""
+
+    consent_signature: str | None = None
+    heard: str = "hola"
+    sent: list[tuple[Any, ...]] = field(default_factory=list)
+    _replies: asyncio.Queue = field(default_factory=asyncio.Queue)
+
+    async def send_text(self, text: str) -> None:
+        self.sent.append(("text", text))
+        self._reply(heard=None)
+
+    async def send_audio(self, pcm: bytes, sample_rate: int) -> None:
+        self.sent.append(("audio", len(pcm), sample_rate))
+
+    async def send_activity_start(self) -> None:
+        self.sent.append(("activity_start",))
+
+    async def send_activity_end(self) -> None:
+        self.sent.append(("activity_end",))
+
+    async def send_audio_stream_end(self) -> None:
+        self.sent.append(("audio_stream_end",))
+        self._reply(heard=self.heard)
+
+    def _reply(self, *, heard: str | None) -> None:
+        if heard:
+            self._replies.put_nowait(LiveEvent(input_transcript=heard))
+        self._replies.put_nowait(audio_event(0.2))
+        self._replies.put_nowait(LiveEvent(output_transcript="Hola, soy yo."))
+        self._replies.put_nowait(LiveEvent(turn_complete=True, interaction_status="IDLE"))
+
+    async def receive(self) -> AsyncIterator[LiveEvent]:
+        while True:
+            event = await self._replies.get()
+            yield event
+            if event.turn_complete:
+                return
+
+
+@dataclass
+class FakeReplyingConnector:
+    """A new conversational session per connection; can reject cached consent signatures."""
+
+    signature: str | None = "sig-1"
+    reject_signatures: bool = False
+    connections: list[tuple[str, dict[str, Any]]] = field(default_factory=list)
+    sessions: list[FakeReplyingSession] = field(default_factory=list)
+
+    @asynccontextmanager
+    async def connect(self, model: str, config: dict[str, Any]):
+        self.connections.append((model, config))
+        replicated = (
+            config.get("speech_config", {}).get("voice_config", {}).get("replicated_voice_config")
+        )
+        if self.reject_signatures and replicated and "voice_consent_signature" in replicated:
+            raise RuntimeError("invalid voice consent signature")
+        session = FakeReplyingSession(consent_signature=self.signature)
+        self.sessions.append(session)
+        yield session

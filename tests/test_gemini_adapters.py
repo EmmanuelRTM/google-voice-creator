@@ -257,3 +257,24 @@ async def test_live_session_streams_audio_and_activity_signals() -> None:
         {"activity_end": {}},
         {"audio_stream_end": True},
     ]
+
+
+def test_token_connector_uses_the_ephemeral_token_on_v1alpha() -> None:
+    from voice_creator.gemini.live_gateway import GeminiLiveConnector, connector_for_token
+    from voice_creator.live.tokens import LiveToken
+
+    token = LiveToken(
+        token="auth_tokens/abc",
+        model="gemini-3.8-live",
+        api_version="v1alpha",
+        uses=1,
+        expire_time="2026-09-30T12:30:00+00:00",
+        new_session_expire_time="2026-09-30T12:01:00+00:00",
+    )
+
+    connector = connector_for_token(token)
+
+    assert isinstance(connector, GeminiLiveConnector)
+    api_client = connector._live._api_client
+    assert api_client.api_key == "auth_tokens/abc"
+    assert api_client._http_options.api_version == "v1alpha"

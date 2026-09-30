@@ -63,7 +63,7 @@ class Settings:
         if not self.api_key:
             raise ConfigError(
                 "No Gemini API key configured. Set GEMINI_API_KEY (or GEMINI_API_KEY_FILE) in "
-                "the MCP server's environment (see .env.example)."
+                "the environment (see .env.example); never paste it into a chat or prompt."
             )
         return self.api_key
 

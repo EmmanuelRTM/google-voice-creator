@@ -112,3 +112,43 @@ def test_token_command_prints_an_ephemeral_token(creator, recordings, capsys) ->
 
     assert token["api_version"] == "v1alpha"
     assert token["token"].startswith("auth_tokens/")
+
+
+def test_verify_exits_non_zero_when_a_check_fails(creator, capsys) -> None:
+    assert main(["verify", "--profile", "ghost"], creator=creator) == 1
+
+    report = json.loads(capsys.readouterr().out)
+    statuses = {check["name"]: check["status"] for check in report["checks"]}
+    assert report["ok"] is False
+    assert statuses["credentials"] == "fail"  # no GEMINI_API_KEY in the test settings
+    assert statuses["profile"] == "fail"
+    assert statuses["live_standard"] == "skip"
+
+
+def test_verify_creates_the_profile_and_writes_a_report(
+    creator, recordings, tmp_path, capsys
+) -> None:
+    sample, consent = recordings
+    markdown = tmp_path / "report.md"
+
+    main(
+        [
+            "verify",
+            "--sample",
+            sample,
+            "--consent",
+            consent,
+            "--skip",
+            "live_realtime,ephemeral_token",
+            "--report",
+            str(markdown),
+        ],
+        creator=creator,
+    )
+
+    report = json.loads(capsys.readouterr().out)
+    statuses = {check["name"]: check["status"] for check in report["checks"]}
+    assert statuses["recordings"] == "pass"
+    assert statuses["profile"] == "pass"
+    assert "| profile | pass |" in markdown.read_text()
+    assert creator.voices.profile("verify").display_name == "Voice verification"

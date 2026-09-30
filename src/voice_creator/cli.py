@@ -6,6 +6,7 @@
     voice-creator render scene.txt --cast Me=profile:me --cast Ana=Kore
     voice-creator live me --prompt "Preséntate" --model gemini-3.8-live
     voice-creator token me            # ephemeral Live token for a browser/mobile client
+    voice-creator verify --sample me.wav --consent consent.wav --report report.md
 
 Results are printed as JSON on stdout; errors go to stderr with a non-zero exit code.
 """
@@ -20,6 +21,7 @@ from collections.abc import Iterable, Sequence
 from pathlib import Path
 from typing import Any
 
+from voice_creator.diagnostics.report import Report
 from voice_creator.dialogue.cast import build_cast
 from voice_creator.errors import ConfigError, VoiceCreatorError
 
@@ -75,6 +77,18 @@ def build_parser() -> argparse.ArgumentParser:
     token = commands.add_parser("token", help="mint an ephemeral Live token locked to a voice")
     _live_options(token)
     token.add_argument("--uses", type=int, default=1)
+
+    verify = commands.add_parser("verify", help="check every Gemini integration end to end")
+    verify.add_argument("--profile", default="verify")
+    verify.add_argument("--display-name", default="Voice verification")
+    verify.add_argument("--sample", help="(re)create the profile from this 10-20 s WAV")
+    verify.add_argument("--consent", help="the consent recording for --sample")
+    verify.add_argument("--language")
+    verify.add_argument(
+        "--replicate", action="store_true", help="also test TTS with a 7-day voice key"
+    )
+    verify.add_argument("--skip", action="append", default=[], metavar="CHECK[,CHECK]")
+    verify.add_argument("--report", help="also write the report (.md or .json)")
     return parser
 
 
@@ -101,6 +115,9 @@ def main(argv: Sequence[str] | None = None, *, creator: Any = None) -> int:
     except (VoiceCreatorError, ValueError, OSError) as exc:
         print(f"voice-creator: {exc}", file=sys.stderr)
         return 1
+    if isinstance(result, Report):
+        print(json.dumps(result.to_dict(), indent=2, ensure_ascii=False, default=str))
+        return 0 if result.ok else 1
     print(json.dumps(result, indent=2, ensure_ascii=False, default=str))
     return 0
 
@@ -142,7 +159,37 @@ def _dispatch(args: argparse.Namespace, creator: Any) -> Any:
             language_code=args.language,
             uses=args.uses,
         ).to_dict()
+    if args.command == "verify":
+        return _verify(args, creator)
     raise ValueError(f"Unknown command {args.command!r}")
+
+
+def _verify(args: argparse.Namespace, creator: Any) -> Report:
+    from voice_creator.diagnostics import VerifyPlan, verify_gemini
+
+    plan = VerifyPlan(
+        profile=args.profile,
+        display_name=args.display_name,
+        sample=Path(args.sample).expanduser().read_bytes() if args.sample else None,
+        consent=Path(args.consent).expanduser().read_bytes() if args.consent else None,
+        language_code=args.language,
+        replicate=args.replicate,
+        skip=frozenset(name.strip() for entry in args.skip for name in entry.split(",") if name),
+    )
+    report = asyncio.run(verify_gemini(creator, plan))
+    if args.report:
+        write_report(report, Path(args.report))
+    return report
+
+
+def write_report(report: Report, path: Path) -> Path:
+    path = path.expanduser()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if path.suffix == ".json":
+        path.write_text(json.dumps(report.to_dict(), indent=2, ensure_ascii=False) + "\n")
+    else:
+        path.write_text(report.to_markdown(), encoding="utf-8")
+    return path
 
 
 def _profile(args: argparse.Namespace, creator: Any) -> Any:

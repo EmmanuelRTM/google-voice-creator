@@ -13,6 +13,7 @@ from typing import Any
 from google.genai import types
 
 from voice_creator.live.runner import LiveEvent
+from voice_creator.live.tokens import LiveToken
 
 
 class GeminiLiveConnector:
@@ -23,6 +24,14 @@ class GeminiLiveConnector:
     async def connect(self, model: str, config: dict[str, Any]) -> AsyncIterator[_Session]:
         async with self._live.connect(model=model, config=config) as session:
             yield _Session(session)
+
+
+def connector_for_token(token: LiveToken) -> GeminiLiveConnector:
+    """Connect the way a browser or phone does: with the ephemeral token as the key."""
+    from google import genai
+
+    client = genai.Client(api_key=token.token, http_options={"api_version": token.api_version})
+    return GeminiLiveConnector(client)
 
 
 class _Session:
