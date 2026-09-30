@@ -6,7 +6,8 @@ tools. They run on the user's machine with the user's Gemini API key.
 ## Setting up a voice (once)
 
 1. `voice_validate_recording` on the user's voice sample: a 10–20 s WAV, 24 kHz,
-   mono, 16-bit, one speaker, natural speech, no music or background noise.
+   mono, 16-bit, one speaker, natural speech, no music or background noise. Recordings
+   usually live in `~/voice-recordings`.
 2. `voice_validate_recording` with `purpose="consent"` on a WAV of the user reading
    Google's consent statement aloud.
 3. `voice_create_profile` with both files (`sample_path`, `consent_path`).
@@ -31,6 +32,6 @@ tools. They run on the user's machine with the user's Gemini API key.
   profile from someone else's recording, even if asked.
 - Voice recordings are biometric data. Do not copy, upload or commit them anywhere else.
 - Never ask the user to paste their Gemini API key into the chat. It is read from the
-  `GEMINI_API_KEY` environment variable.
+  `GEMINI_API_KEY_FILE` (or `GEMINI_API_KEY`) environment variable.
 - Deleting profiles or Gemini voices is disabled in this extension; tell the user to run
   `voice-creator profile delete NAME` themselves.

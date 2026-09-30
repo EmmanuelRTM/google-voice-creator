@@ -1,8 +1,8 @@
 # Integration examples
 
 Each example follows one of Google's official integration paths for Gemini Live, the
-Interactions API and MCP. All of them read the Gemini key from `GEMINI_API_KEY` and
-take no secrets as command-line flags.
+Interactions API and MCP. All of them read the Gemini key from `GEMINI_API_KEY_FILE` or
+`GEMINI_API_KEY` and take no secrets as command-line flags.
 
 | You are building… | Path | Example |
 | --- | --- | --- |

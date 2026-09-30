@@ -115,6 +115,8 @@ def build_run_config(creator: VoiceCreator, profile: str) -> RunConfig:
 
 async def converse(profile: str, prompt: str, model: str, output: Path) -> None:
     creator = VoiceCreator()
+    # ADK's Gemini client reads GEMINI_API_KEY; support GEMINI_API_KEY_FILE as well.
+    os.environ.setdefault("GEMINI_API_KEY", creator.settings.require_api_key())
     runner = InMemoryRunner(agent=build_agent(creator, profile, model), app_name=APP_NAME)
     session = await runner.session_service.create_session(app_name=APP_NAME, user_id="local")
     queue = LiveRequestQueue()

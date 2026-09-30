@@ -18,6 +18,8 @@ import os
 
 from google import genai
 
+from voice_creator.config import Settings
+
 READ_ONLY_TOOLS = ["voice_list_profiles", "voice_list_gemini_voices", "voice_preview_script"]
 
 
@@ -31,7 +33,8 @@ def main() -> None:
     if not args.url.startswith("https://"):
         parser.error("--url must be https:// (Gemini calls it from Google's servers)")
 
-    client = genai.Client()  # reads GEMINI_API_KEY from the environment
+    # GEMINI_API_KEY_FILE or GEMINI_API_KEY, resolved the same way as everywhere else
+    client = genai.Client(api_key=Settings.from_env().require_api_key())
     interaction = client.interactions.create(
         model=args.model,
         input=args.prompt,
