@@ -18,7 +18,8 @@ from voice_creator_mcp.auth.scopes import LIVE_TOKENS_PATH, TOOL_SCOPES
 
 ROOT = Path(__file__).resolve().parents[1]
 EXAMPLES = ROOT / "examples"
-PYTHON_EXAMPLES = sorted(EXAMPLES.rglob("*.py"))
+# Skip macOS AppleDouble sidecars ("._foo.py") that appear on exFAT and network volumes.
+PYTHON_EXAMPLES = sorted(p for p in EXAMPLES.rglob("*.py") if not p.name.startswith("._"))
 TOOL_LISTS = {"AGENT_TOOLS", "TOOLS", "READ_ONLY_TOOLS"}
 
 

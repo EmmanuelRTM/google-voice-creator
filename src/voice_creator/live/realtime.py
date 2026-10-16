@@ -25,7 +25,7 @@ from typing import Any, Literal, Protocol
 
 from voice_creator.audio.pcm import DEFAULT_SAMPLE_RATE, parse_pcm_rate
 from voice_creator.errors import LiveConnectionError
-from voice_creator.live.config import LiveSessionOptions, build_live_config
+from voice_creator.live.config import LiveSessionOptions, TurnDetection, build_live_config
 from voice_creator.live.runner import LiveConnector, LiveEvent
 
 logger = logging.getLogger(__name__)
@@ -158,7 +158,7 @@ class RealtimeBridge:
                         },
                     )
                 )
-                outcome = await self._pump(session, client, state)
+                outcome = await self._pump(session, client, state, opts.turn_detection)
             if outcome == "client":
                 return state.summary("client")
             if state.handle and state.reconnects < self._max_reconnects:
@@ -168,9 +168,13 @@ class RealtimeBridge:
             return state.summary("server_closed")
 
     async def _pump(
-        self, session: RealtimeSession, client: ClientChannel, state: _State
+        self,
+        session: RealtimeSession,
+        client: ClientChannel,
+        state: _State,
+        turn_detection: TurnDetection | None,
     ) -> Literal["client", "server"]:
-        upstream = asyncio.create_task(self._upstream(session, client))
+        upstream = asyncio.create_task(self._upstream(session, client, turn_detection))
         downstream = asyncio.create_task(self._downstream(session, client, state))
         done, pending = await asyncio.wait(
             {upstream, downstream}, return_when=asyncio.FIRST_COMPLETED
@@ -180,14 +184,17 @@ class RealtimeBridge:
         await asyncio.gather(*pending, return_exceptions=True)
         return "client" if upstream in done else "server"
 
-    async def _upstream(self, session: RealtimeSession, client: ClientChannel) -> None:
+    async def _upstream(
+        self, session: RealtimeSession, client: ClientChannel, turn_detection: TurnDetection | None
+    ) -> None:
         while True:
             message = await client.receive()
             if message is None or message.kind == "stop":
                 return
-            problem = _validate(message)
+            problem = _validate(message, turn_detection)
             if problem:
-                await client.send(_error("invalid_audio", problem))
+                code = "invalid_audio" if message.kind == "audio" else "invalid_signal"
+                await client.send(_error(code, problem))
                 continue
             if message.kind == "audio":
                 await session.send_audio(message.audio, INPUT_SAMPLE_RATE)
@@ -233,7 +240,14 @@ class _State:
         )
 
 
-def _validate(message: ClientMessage) -> str | None:
+def _validate(message: ClientMessage, turn_detection: TurnDetection | None) -> str | None:
+    # Per the Live API guide: activity signals replace automatic VAD (push-to-talk), and
+    # audio_stream_end only flushes cached audio while automatic VAD is on.
+    manual = turn_detection == "manual"
+    if message.kind in ("activity_start", "activity_end") and not manual:
+        return f"{message.kind} needs turn_detection 'manual'; automatic VAD is on"
+    if message.kind == "audio_stream_end" and manual:
+        return "audio_stream_end is for automatic VAD; send activity_end in manual mode"
     if message.kind != "audio":
         return None
     if not message.audio or len(message.audio) % 2:

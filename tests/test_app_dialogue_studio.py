@@ -139,6 +139,8 @@ def test_live_token_uses_the_profile_voice_and_cached_signature(
     assert "consent_audio" not in replicated
     assert "exactly" in config["system_instruction"]
     assert request["uses"] == 2
+    # Locked config: the browser cannot enable transcripts later, so the token does.
+    assert config["input_audio_transcription"] == {}
     assert token.model == "gemini-3.8-live"
 
 

@@ -19,7 +19,6 @@ from voice_creator_mcp.auth.jwt_verifier import (
     jwks_key_resolver,
 )
 from voice_creator_mcp.auth.scopes import (
-    ALL_SCOPES,
     API_ROUTE_SCOPES,
     BASELINE_SCOPES,
     LIVE_RELAY_PATH,
@@ -68,7 +67,8 @@ def build_http_app(
         resource_url=oauth.resource_url,
         authorization_servers=[oauth.issuer],
         mcp_path=http.path,
-        scopes_supported=ALL_SCOPES,
+        # The minimal scopes for basic use; clients step up to clone/delete/generate via 403.
+        scopes_supported=sorted(BASELINE_SCOPES),
         baseline_scopes=BASELINE_SCOPES,
         tool_scopes=TOOL_SCOPES,
         api_scopes=API_ROUTE_SCOPES,

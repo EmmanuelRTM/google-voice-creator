@@ -87,7 +87,7 @@ def test_serves_protected_resource_metadata(client: TestClient, path: str) -> No
     metadata = response.json()
     assert metadata["resource"] == RESOURCE
     assert metadata["authorization_servers"] == [ISSUER]
-    assert metadata["scopes_supported"] == list(ALL_SCOPES)
+    assert metadata["scopes_supported"] == list(ALL_SCOPES)  # what this test app advertises
     assert metadata["bearer_methods_supported"] == ["header"]
     assert metadata["resource_name"] == "Google Voice Creator"
 

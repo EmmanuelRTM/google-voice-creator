@@ -7,8 +7,10 @@ talking while they run, so this bridge:
 
 * declares every tool with `behavior=NON_BLOCKING` and its JSON Schema as
   `parameters_json_schema` (the SDK's recommended native JSON Schema field),
-* runs each `tool_call` concurrently and answers with `send_tool_response`, using
-  `scheduling` (WHEN_IDLE by default) so results do not cut the model off,
+* runs each `tool_call` concurrently and answers with `send_tool_response`. Function
+  scheduling (`SILENT`, `WHEN_IDLE`, `INTERRUPT`) is only supported by `gemini-3.8-live`;
+  Extended Thinking rejects it, so no `scheduling` is sent unless you pass one
+  (`scheduling_for(model)` picks the documented default),
 * cancels running calls on `tool_call_cancellation`.
 
     async with mcp_session_for_server() as mcp, client.aio.live.connect(
@@ -30,6 +32,14 @@ from google.genai import types
 
 logger = logging.getLogger(__name__)
 
+GEMINI_38_LIVE = "gemini-3.8-live"
+
+
+def scheduling_for(model: str) -> types.FunctionResponseScheduling | None:
+    """WHEN_IDLE for `gemini-3.8-live` (results wait for a pause); None for models that do
+    not support function scheduling, such as `gemini-3.8-live-extended-thinking`."""
+    return types.FunctionResponseScheduling.WHEN_IDLE if model == GEMINI_38_LIVE else None
+
 
 class McpSession(Protocol):
     async def list_tools(self) -> Any: ...
@@ -49,7 +59,7 @@ class LiveMcpBridge:
         mcp: McpSession,
         *,
         allowed_tools: Collection[str] | None = None,
-        scheduling: types.FunctionResponseScheduling = types.FunctionResponseScheduling.WHEN_IDLE,
+        scheduling: types.FunctionResponseScheduling | None = None,
     ) -> None:
         self._mcp = mcp
         self._allowed = frozenset(allowed_tools) if allowed_tools is not None else None
@@ -75,8 +85,8 @@ class LiveMcpBridge:
     def busy(self) -> bool:
         """True while a call runs, or a result was sent and the model has not spoken since.
 
-        With Extended Thinking the model can report IDLE before it reacts to a result
-        (WHEN_IDLE scheduling), so end a conversation on IDLE only when not busy.
+        With Extended Thinking the model can report IDLE before it reacts to a result,
+        so end a conversation on IDLE only when not busy.
         """
         return bool(self._pending) or self._unanswered > 0
 

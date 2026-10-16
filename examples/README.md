@@ -37,7 +37,7 @@ uv run python scripts/verify_gemini.py --profile verify   # adds the MCP checks
 
 ```sh
 uv sync --all-extras                        # this repo, with the MCP server
-uv pip install "google-adk[mcp]>=2.10"      # adk_voice_agent
+uv pip install "google-adk[mcp]>=2.12"      # adk_voice_agent
 uv pip install "genkit>=0.12"               # genkit_flow
 uv pip install websockets                   # realtime_ws_client
 gemini extensions install ./examples/gemini_cli_extension

@@ -1,4 +1,4 @@
-"""`VoicesGateway` backed by `genai.Client().voices` (google-genai >= 2.25)."""
+"""`VoicesGateway` backed by `genai.Client().voices` (google-genai >= 2.31)."""
 
 from __future__ import annotations
 

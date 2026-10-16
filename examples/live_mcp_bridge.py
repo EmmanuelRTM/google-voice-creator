@@ -17,13 +17,15 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import contextlib
 import os
 from pathlib import Path
 
+import httpx2
 from google import genai
 from google.genai import types
 from mcp import Client, StdioServerParameters
-from mcp.client.streamable_http import create_mcp_http_client, streamable_http_client
+from mcp.client.streamable_http import streamable_http_client
 
 from voice_creator import VoiceCreator
 from voice_creator.audio.pcm import PcmAudio, write_wav
@@ -39,17 +41,30 @@ TOOLS = ["voice_list_profiles", "voice_list_gemini_voices", "voice_preview_scrip
 SERVER_ENV = ("GEMINI_API_KEY", "GEMINI_API_KEY_FILE", "VOICE_CREATOR_DATA_DIR")
 
 
-def mcp_server():
-    url = os.environ.get("VOICE_CREATOR_MCP_URL")
-    if url:
-        bearer = os.environ["VOICE_CREATOR_MCP_BEARER"]
-        http = create_mcp_http_client(headers={"Authorization": f"Bearer {bearer}"})
-        return streamable_http_client(url, http_client=http)
-    return StdioServerParameters(
-        command="voice-creator-mcp",
-        args=["--transport", "stdio"],
-        env={name: os.environ[name] for name in SERVER_ENV if name in os.environ},
-    )
+@contextlib.asynccontextmanager
+async def mcp_client():
+    """Connect to the MCP server: remote over Streamable HTTP, or a local stdio child."""
+    async with contextlib.AsyncExitStack() as stack:
+        url = os.environ.get("VOICE_CREATOR_MCP_URL")
+        if url:
+            bearer = os.environ["VOICE_CREATOR_MCP_BEARER"]
+            # You own the HTTP client, so you enter and close it; the SDK never closes one it
+            # did not create. Audio resources can exceed the SDK's 1 MiB default per SSE event
+            # on legacy (2025-11-25) connections, so lift that cap.
+            http = await stack.enter_async_context(
+                httpx2.AsyncClient(
+                    headers={"Authorization": f"Bearer {bearer}"},
+                    timeout=httpx2.Timeout(30.0, read=300.0),
+                )
+            )
+            server = streamable_http_client(url, http_client=http, max_sse_event_size=None)
+        else:
+            server = StdioServerParameters(
+                command="voice-creator-mcp",
+                args=["--transport", "stdio"],
+                env={name: os.environ[name] for name in SERVER_ENV if name in os.environ},
+            )
+        yield await stack.enter_async_context(Client(server))
 
 
 async def converse(profile: str, prompt: str, output: Path) -> None:
@@ -63,7 +78,7 @@ async def converse(profile: str, prompt: str, output: Path) -> None:
         thinking_level="low",
     )
     audio = bytearray()
-    async with Client(mcp_server()) as mcp:
+    async with mcp_client() as mcp:
         bridge = LiveMcpBridge(mcp, allowed_tools=TOOLS)
         config = {**build_live_config(options), "tools": await bridge.tools()}
         client = genai.Client(api_key=creator.settings.require_api_key())

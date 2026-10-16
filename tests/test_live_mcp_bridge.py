@@ -5,7 +5,7 @@ from typing import Any
 import pytest
 from google.genai import types
 
-from voice_creator_mcp.integrations.gemini_live import LiveMcpBridge
+from voice_creator_mcp.integrations.gemini_live import LiveMcpBridge, scheduling_for
 
 
 class FakeMcpSession:
@@ -76,7 +76,8 @@ async def test_allow_list_limits_the_exposed_tools() -> None:
     assert [decl.name for decl in tool.function_declarations] == ["voice_render_dialogue"]
 
 
-async def test_tool_calls_run_and_answer_with_scheduling() -> None:
+async def test_tool_calls_run_and_answer_without_scheduling_by_default() -> None:
+    # Extended Thinking rejects function scheduling, so none is sent unless asked for.
     mcp, live = FakeMcpSession(), FakeLiveSession()
     bridge = LiveMcpBridge(mcp)
 
@@ -87,7 +88,20 @@ async def test_tool_calls_run_and_answer_with_scheduling() -> None:
     (response,) = live.responses
     assert response.id == "c1"
     assert response.response == {"result": {"render_id": "r1"}}
-    assert response.scheduling == types.FunctionResponseScheduling.WHEN_IDLE
+    assert response.scheduling is None
+
+
+async def test_tool_declarations_validate_as_live_config() -> None:
+    tools = await LiveMcpBridge(FakeMcpSession()).tools()
+
+    (declared,) = types.LiveConnectConfig(tools=tools).tools
+    assert [d.behavior for d in declared.function_declarations] == [types.Behavior.NON_BLOCKING] * 2
+    assert declared.function_declarations[1].parameters_json_schema["required"] == ["script"]
+
+
+def test_scheduling_defaults_follow_the_model_table() -> None:
+    assert scheduling_for("gemini-3.8-live") == types.FunctionResponseScheduling.WHEN_IDLE
+    assert scheduling_for("gemini-3.8-live-extended-thinking") is None
 
 
 async def test_tool_errors_are_reported_to_the_model() -> None:

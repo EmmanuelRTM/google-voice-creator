@@ -21,6 +21,7 @@ def test_replicate_stored_voice_sends_both_recordings() -> None:
     assert payload["store"] is True
     voice = payload["voice"]
     assert voice["type"] == "replicated"
+    assert voice["model"] == "gemini-3.8-flash-tts"
     assert voice["display_name"] == "Mario"
     assert voice["language_code"] == "es-MX"
     assert voice["replicated"]["source_audio"] == {

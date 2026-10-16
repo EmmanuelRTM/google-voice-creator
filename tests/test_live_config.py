@@ -32,9 +32,9 @@ def test_standard_model_with_replicated_voice() -> None:
                     "consent_audio": b"consent",
                 }
             },
-            "language_code": "es-MX",
         },
-        "system_instruction": "Be brief.",
+        # Native-audio Live models reject speech_config.language_code; it becomes a hint.
+        "system_instruction": "Be brief.\n\nSpeak in the language with BCP-47 tag es-MX.",
         "output_audio_transcription": {},
     }
 

@@ -2,6 +2,8 @@
 
 * `gemini-3.8-live` rejects `thinking_level`; it must be omitted.
 * `gemini-3.8-live-extended-thinking` accepts `low`, `medium` or `high` (not `minimal`).
+* Native-audio Live models choose the language automatically and do not support
+  `speech_config.language_code`; `language_code` becomes a system-instruction hint.
 * A replicated voice is sent inline on every session (`replicated_voice_config`):
   a 24 kHz, 16-bit mono WAV sample plus either the consent recording or the
   consent signature the server returned for an earlier session.
@@ -72,8 +74,9 @@ def build_live_config(options: LiveSessionOptions) -> dict[str, Any]:
     speech = _speech_config(options)
     if speech:
         config["speech_config"] = speech
-    if options.system_instruction:
-        config["system_instruction"] = options.system_instruction
+    instruction = _with_language_hint(options.system_instruction, options.language_code)
+    if instruction:
+        config["system_instruction"] = instruction
     level = validate_thinking_level(options.model, options.thinking_level)
     if level:
         config["thinking_config"] = {"thinking_level": level}
@@ -124,6 +127,12 @@ def _speech_config(options: LiveSessionOptions) -> dict[str, Any]:
         speech["voice_config"] = {"replicated_voice_config": options.voice.to_config()}
     elif isinstance(options.voice, str) and options.voice.strip():
         speech["voice_config"] = {"prebuilt_voice_config": {"voice_name": options.voice.strip()}}
-    if options.language_code:
-        speech["language_code"] = options.language_code
     return speech
+
+
+def _with_language_hint(instruction: str | None, language_code: str | None) -> str | None:
+    code = (language_code or "").strip()
+    if not code:
+        return instruction
+    hint = f"Speak in the language with BCP-47 tag {code}."
+    return f"{instruction}\n\n{hint}" if instruction else hint

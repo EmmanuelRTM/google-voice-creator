@@ -72,6 +72,8 @@ async def converse(url: str, profile: str, recording: Path, output: Path) -> Non
             reply = await receive_reply(ws)
         finally:
             sender.cancel()
+            # Retrieve the task's result so a send error after `stop` is not logged as unretrieved.
+            await asyncio.gather(sender, return_exceptions=True)
     write_wav(output, reply)
     print(f"Saved {output} ({reply.duration_seconds:.1f} s)")
 

@@ -45,14 +45,8 @@ class GeminiTtsSynthesizer:
 def _text_content(text: str, style: str | None) -> dict[str, Any]:
     content: dict[str, Any] = {"type": "text", "text": text}
     if style:
-        content["annotations"] = [
-            {
-                "type": "speech_metadata",
-                "style": style,
-                "start_index": 0,
-                "end_index": len(text.encode("utf-8")),
-            }
-        ]
+        # No start/end index: the style applies to the whole text, as in the official example.
+        content["annotations"] = [{"type": "speech_metadata", "style": style}]
     return content
 
 

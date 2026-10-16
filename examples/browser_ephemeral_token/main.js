@@ -7,6 +7,9 @@
 // 2. The browser connects to Gemini Live directly with that token, streams the
 //    microphone as 16 kHz PCM and plays the 24 kHz reply, flushing on barge-in.
 import { GoogleGenAI, Modality } from "@google/genai";
+// `?url&no-inline` keeps the worklet a real file in `vite build` (Vite inlines small assets
+// as data: URLs by default, which a strict CSP blocks in `audioWorklet.addModule`).
+import pcmRecorderUrl from "./pcm-recorder.js?url&no-inline";
 
 const TOKEN_ENDPOINT = "/v1/live-tokens";
 const PROFILE = new URLSearchParams(location.search).get("profile") ?? "me";
@@ -83,7 +86,8 @@ async function startMicrophone(onChunk) {
     audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true },
   });
   const context = new AudioContext({ sampleRate: 16000 });
-  await context.audioWorklet.addModule(new URL("./pcm-recorder.js", import.meta.url));
+  await context.resume(); // autoplay policy: a context may start suspended
+  await context.audioWorklet.addModule(pcmRecorderUrl);
   const recorder = new AudioWorkletNode(context, "pcm-recorder");
   recorder.port.onmessage = (event) => onChunk(event.data);
   context.createMediaStreamSource(stream).connect(recorder);
@@ -100,28 +104,54 @@ function toBase64(buffer) {
 }
 
 async function start() {
+  // Created inside the click gesture, before any await, so the autoplay policy allows it.
+  const player = new Player();
+  await player.context.resume();
   const { token, model, api_version: apiVersion } = await mintLiveToken();
   // The ephemeral token takes the place of the API key.
   const ai = new GoogleGenAI({ apiKey: token, httpOptions: { apiVersion } });
-  const player = new Player();
 
-  const session = await ai.live.connect({
-    model,
-    // Voice, instructions and model are locked in the token; this only restates the modality.
-    config: { responseModalities: [Modality.AUDIO] },
-    callbacks: {
-      onopen: () => log(`Connected to ${model} as "${PROFILE}"`),
-      onmessage: (message) => {
-        const content = message.serverContent;
-        if (content?.interrupted) player.flush();
-        if (message.data) player.play(message.data);
-        if (content?.inputTranscription?.text) log(`You: ${content.inputTranscription.text}`);
-        if (content?.outputTranscription?.text) log(`Voice: ${content.outputTranscription.text}`);
+  // Transcripts arrive in fragments; the Live guide collects them until the turn completes.
+  const transcript = { you: "", voice: "" };
+  // `connect` only settles once setup completes, so a socket that closes first (expired or
+  // reused token, rejected config) would hang the Start button: race it against the close.
+  let rejectOnClose;
+  const closed = new Promise((_, reject) => (rejectOnClose = reject));
+  closed.catch(() => {});
+
+  const session = await Promise.race([
+    ai.live.connect({
+      model,
+      // Voice, instructions and model are locked in the token; this only restates the modality.
+      config: { responseModalities: [Modality.AUDIO] },
+      callbacks: {
+        onopen: () => log(`Connected to ${model} as "${PROFILE}"`),
+        onmessage: (message) => {
+          const content = message.serverContent;
+          if (content?.interrupted) player.flush();
+          // Walk every part, as the Live guide does; audio arrives as inline PCM parts.
+          for (const part of content?.modelTurn?.parts ?? []) {
+            if (part.inlineData?.mimeType?.startsWith("audio/pcm")) player.play(part.inlineData.data);
+          }
+          transcript.you += content?.inputTranscription?.text ?? "";
+          transcript.voice += content?.outputTranscription?.text ?? "";
+          if (content?.turnComplete) {
+            if (transcript.you) log(`You: ${transcript.you}`);
+            if (transcript.voice) log(`Voice: ${transcript.voice}`);
+            transcript.you = transcript.voice = "";
+          }
+        },
+        // Browsers raise a plain Event here (no `.message`); the close code carries the detail.
+        onerror: (error) => log(`Error: ${error.message ?? "WebSocket error (see close code)"}`),
+        onclose: (event) => {
+          log(`Closed (${event.code})${event.reason ? ` ${event.reason}` : ""}`);
+          rejectOnClose(new Error(`Live session closed (${event.code})`));
+          if (!stopButton.disabled) stopButton.click(); // token expiry, GoAway, session limit
+        },
       },
-      onerror: (error) => log(`Error: ${error.message}`),
-      onclose: (event) => log(`Closed ${event.reason ? `(${event.reason})` : ""}`),
-    },
-  });
+    }),
+    closed,
+  ]);
 
   const stopMicrophone = await startMicrophone((pcm) =>
     session.sendRealtimeInput({ audio: { data: toBase64(pcm), mimeType: INPUT_MIME_TYPE } }),

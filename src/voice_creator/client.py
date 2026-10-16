@@ -71,19 +71,17 @@ class VoiceCreator:
             overwrite=overwrite,
         )
 
-    def live_speech_config(self, profile: str, *, language_code: str | None = None) -> Any:
+    def live_speech_config(self, profile: str) -> Any:
         """The official `types.SpeechConfig` that makes Gemini Live speak in `profile`'s voice.
 
         Use it with the google-genai SDK (`config={"speech_config": ...}`) or ADK
         (`RunConfig(speech_config=...)`). It carries the cached consent signature when
-        there is one, otherwise the consent recording.
+        there is one, otherwise the consent recording. Native-audio Live models pick the
+        language themselves, so no `language_code` is set here.
         """
         from google.genai import types
 
-        options = LiveSessionOptions(
-            voice=self.voices.live_voice(profile),
-            language_code=language_code or self.voices.profile(profile).language_code,
-        )
+        options = LiveSessionOptions(voice=self.voices.live_voice(profile))
         return types.SpeechConfig.model_validate(build_live_config(options)["speech_config"])
 
     def issue_live_token(self, profile: str, **options: Any) -> LiveToken:

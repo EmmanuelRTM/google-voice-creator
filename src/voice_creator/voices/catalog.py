@@ -14,6 +14,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any, Protocol
 
+from voice_creator.config import DEFAULT_TTS_MODEL
 from voice_creator.errors import VoiceApiError
 
 _VOICE_ID = re.compile(r"^[A-Za-z0-9_\-]+$")
@@ -82,6 +83,7 @@ class VoiceCatalog:
     ) -> CreatedVoice:
         voice = _voice_resource(
             "replicated",
+            model=DEFAULT_TTS_MODEL,  # as in the official voice-replication example
             display_name=display_name,
             language_code=language_code,
             replicated={

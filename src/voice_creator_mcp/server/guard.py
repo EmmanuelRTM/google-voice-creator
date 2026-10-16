@@ -20,7 +20,7 @@ from typing import Any, TypeVar
 
 import anyio
 from mcp.server.mcpserver import Context, MCPServer
-from mcp.server.mcpserver.exceptions import ResourceError, ToolError
+from mcp.server.mcpserver.exceptions import ResourceError, ResourceNotFoundError, ToolError
 from mcp.types import ToolAnnotations
 
 from voice_creator.errors import (
@@ -93,7 +93,8 @@ class ToolGuard:
             self._check_scopes(principal, BASELINE_SCOPES, "reading renders")
             path = self._workspaces.get(principal).output_dir / f"{render_id}{suffix}"
             if not _RENDER_ID.fullmatch(render_id) or not path.is_file():
-                raise ResourceError(f"Render {render_id!r} not found")
+                # Reaches the client as -32602, as the resources spec requires for a missing URI.
+                raise ResourceNotFoundError(f"Render {render_id!r} not found")
             outcome = "ok"
             return path
         except AuthorizationError as exc:

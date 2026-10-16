@@ -1,7 +1,8 @@
-"""`LiveConnector` backed by `genai.Client().aio.live` (google-genai >= 2.25).
+"""`LiveConnector` backed by `genai.Client().aio.live` (google-genai >= 2.31).
 
-Text is sent with `send_realtime_input(text=...)`: Gemini 3.x Live models only
-accept `client_content` for seeding initial history.
+Text is sent with `send_realtime_input(text=...)`, the documented low-latency path.
+`send_client_content` is also supported for the whole session when strict ordering
+of turns matters more than responsiveness.
 """
 
 from __future__ import annotations

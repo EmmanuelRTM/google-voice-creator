@@ -313,6 +313,9 @@ voice-creator-mcp --transport http --host 0.0.0.0 --port 8765
   `/.well-known/oauth-protected-resource/mcp`. It answers `401` with `resource_metadata`,
   and `403 insufficient_scope` for step-up. The same guard protects `/v1/live-tokens` and
   `/v1/live`.
+- **Large audio over HTTP.** Python clients on the MCP SDK's legacy (2025-11-25) transport
+  cap each SSE event at 1 MiB, which a render resource of more than ~10 s exceeds. Pass
+  `max_sse_event_size=None` to `streamable_http_client` (see `examples/live_mcp_bridge.py`).
 - **Per-user isolation.** Each user gets a private workspace. Remote callers send audio
   as base64, and server paths are never read or returned.
 - **Refuses insecure setups.** No OAuth outside loopback, and no plain HTTP OAuth URLs
@@ -416,7 +419,7 @@ uv run ruff format .     # format
 
 Tests are written first and use in-memory fakes for every external port
 (`tests/fakes.py`). The Gemini adapters are tested against duck-typed fakes that mirror
-`google-genai` 2.25. The auth layer is tested with real RS256 JWTs and Starlette's test
+`google-genai` 2.31. The auth layer is tested with real RS256 JWTs and Starlette's test
 client. The same checks run in CI on every push and pull request.
 
 ```
@@ -440,9 +443,9 @@ scripts/verify_gemini.py      core + MCP verification with your key
 
 ## Status and limitations
 
-- Built against the `google-genai` **2.25.0** SDK types and MCP Python SDK **2.2**
-  (protocol 2026-07-28, with 2025-11-25 clients still supported). The examples were run
-  against `google-adk` 2.10, `genkit` 0.12 and `@google/genai` 2.24. Every payload
+- Built against the `google-genai` **2.31.0** SDK types and MCP Python SDK **2.3**
+  (protocol 2026-07-28, with 2025-11-25 clients still supported). The examples were checked
+  against `google-adk` 2.12, `genkit` 0.12 and `@google/genai` 2.30. Every payload
   validates against the SDK's own models, but nothing **has been run against the live
   Gemini service yet** (no key was available while building). Run `voice-creator verify`
   first; see the

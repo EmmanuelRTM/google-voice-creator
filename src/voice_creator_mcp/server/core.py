@@ -41,7 +41,11 @@ def build_server(workspaces: WorkspaceProvider, options: ServerOptions | None = 
 
 
 def assemble_server(guard: ToolGuard) -> MCPServer:
-    server = MCPServer(name=SERVER_NAME, instructions=INSTRUCTIONS, version=__version__)
+    # The catalog never changes, so skip the subscription bus: `listChanged`/`subscribe` are
+    # advertised as false and `subscriptions/listen` is not served (mcp >= 2.3).
+    server = MCPServer(
+        name=SERVER_NAME, instructions=INSTRUCTIONS, version=__version__, subscriptions=False
+    )
     register_voice_tools(server, guard)
     register_dialogue_tools(server, guard)
     register_render_resources(server, guard)

@@ -4,6 +4,7 @@ __pycache__/
 .venv/
 .pytest_cache/
 .ruff_cache/
+.mypy_cache/
 dist/
 build/
 *.egg-info/
@@ -18,5 +19,23 @@ build/
 voice-data/
 *.wav
 
-# Example dependencies
+# Example dependencies and builds
 node_modules/
+examples/browser_ephemeral_token/dist/
+.vite/
+
+# macOS metadata (AppleDouble "._" sidecars appear on exFAT/network volumes)
+.DS_Store
+._*
+.AppleDouble
+.LSOverride
+.Spotlight-V100
+.Trashes
+.fseventsd
+.TemporaryItems
+.DocumentRevisions-V100
+
+# Editors
+.idea/
+.vscode/
+*.swp

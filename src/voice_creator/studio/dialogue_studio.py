@@ -174,6 +174,8 @@ class DialogueStudio:
         options = self._live_options(
             profile, mode, persona, model, thinking_level, language_code, extra_instructions
         )
+        # The token locks the setup config, so a browser cannot ask for transcripts later.
+        options = replace(options, input_transcription=True)
         issuer = LiveTokenIssuer(self._backend.token_gateway())
         return issuer.issue(options, uses=uses, ttl=timedelta(minutes=ttl_minutes))
 

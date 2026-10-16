@@ -33,6 +33,10 @@ LanguageCode = Annotated[
 
 _LOCAL_READ = ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False)
 _LOCAL_WRITE = ToolAnnotations(read_only_hint=False, destructive_hint=False, open_world_hint=False)
+# `overwrite=True` replaces an existing profile's recordings, so this is not additive.
+_LOCAL_REPLACE = ToolAnnotations(
+    read_only_hint=False, destructive_hint=True, idempotent_hint=False, open_world_hint=False
+)
 _LOCAL_DELETE = ToolAnnotations(read_only_hint=False, destructive_hint=True, open_world_hint=True)
 _REMOTE_READ = ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=True)
 _REMOTE_WRITE = ToolAnnotations(read_only_hint=False, destructive_hint=False, open_world_hint=True)
@@ -72,7 +76,7 @@ def register_voice_tools(server: MCPServer, guard: ToolGuard) -> None:
         server,
         name="voice_create_profile",
         title="Create a voice profile",
-        annotations=_LOCAL_WRITE,
+        annotations=_LOCAL_REPLACE,
     )
     async def voice_create_profile(
         name: ProfileName,

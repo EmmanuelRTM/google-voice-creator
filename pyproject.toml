@@ -7,7 +7,7 @@ requires-python = ">=3.11"
 license = { text = "Apache-2.0" }
 # The voice core (`voice_creator`) only needs the official Google GenAI SDK.
 dependencies = [
-    "google-genai>=2.25.0",
+    "google-genai>=2.31.0",
 ]
 
 [project.optional-dependencies]
@@ -15,16 +15,16 @@ dependencies = [
 mcp = [
     "anyio>=4.9",
     "httpx>=0.27",
-    "mcp>=2.2,<3",
-    "pydantic>=2.12",
+    "mcp>=2.3,<3",
+    "pydantic>=2.14",
     "pyjwt[crypto]>=2.10.1",
-    "starlette>=0.48",
+    "starlette>=1.8",
     "uvicorn>=0.31.1",
 ]
 dev = [
     "pytest>=9.0",
     "pytest-asyncio>=1.4",
-    "ruff>=0.16",
+    "ruff>=0.17",
 ]
 
 [project.scripts]

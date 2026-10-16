@@ -24,7 +24,7 @@ from mcp.server.mcpserver import MCPServer
 
 from voice_creator.diagnostics.report import Check, Outcome, failed, passed, skipped, warned
 from voice_creator.live.config import LiveSessionOptions, build_live_config
-from voice_creator_mcp.integrations.gemini_live import LiveMcpBridge
+from voice_creator_mcp.integrations.gemini_live import LiveMcpBridge, scheduling_for
 
 TOOL_UNDER_TEST = "voice_list_profiles"
 TOOL_PROMPT = (
@@ -130,7 +130,9 @@ class McpChecks:
 
     async def _converse(self, options: LiveSessionOptions, progress: _ToolRoundTrip) -> None:
         async with Client(self._server) as mcp:
-            bridge = LiveMcpBridge(mcp, allowed_tools={TOOL_UNDER_TEST})
+            bridge = LiveMcpBridge(
+                mcp, allowed_tools={TOOL_UNDER_TEST}, scheduling=scheduling_for(options.model)
+            )
             config = {**build_live_config(options), "tools": await bridge.tools()}
             connect = self._genai_client().aio.live.connect
             async with connect(model=options.model, config=config) as live:

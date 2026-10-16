@@ -1,3 +1,5 @@
+from dataclasses import replace
+
 import pytest
 
 from voice_creator.errors import LiveConnectionError
@@ -23,13 +25,12 @@ def is_turn_complete(event) -> bool:
     return event.kind == "turn_complete"
 
 
-async def test_forwards_client_audio_text_and_activity_signals() -> None:
+async def test_forwards_client_audio_text_and_stream_end_with_automatic_vad() -> None:
     session = FakeRealtimeSession()
     client = FakeClientChannel(
         [
             ClientMessage("audio", audio=b"\x01\x00" * 160),
-            ClientMessage("activity_start"),
-            ClientMessage("activity_end"),
+            ClientMessage("activity_start"),  # push-to-talk signal: rejected under VAD
             ClientMessage("text", text="hola"),
             ClientMessage("audio_stream_end"),
             ClientMessage("stop"),
@@ -40,14 +41,37 @@ async def test_forwards_client_audio_text_and_activity_signals() -> None:
 
     assert session.sent == [
         ("audio", b"\x01\x00" * 160, INPUT_SAMPLE_RATE),
-        ("activity_start",),
-        ("activity_end",),
         ("text", "hola"),
         ("audio_stream_end",),
     ]
     assert summary.ended == "client"
     assert client.events[0].kind == "session"
     assert client.events[0].data["output_sample_rate"] == 24_000
+    (error,) = [event for event in client.events if event.kind == "error"]
+    assert error.data["error"] == "invalid_signal"
+
+
+async def test_manual_turn_detection_takes_activity_signals_not_stream_end() -> None:
+    session = FakeRealtimeSession()
+    client = FakeClientChannel(
+        [
+            ClientMessage("activity_start"),
+            ClientMessage("audio", audio=b"\x01\x00" * 160),
+            ClientMessage("audio_stream_end"),  # VAD-only: rejected in manual mode
+            ClientMessage("activity_end"),
+            ClientMessage("stop"),
+        ]
+    )
+    options = replace(OPTIONS, turn_detection="manual")
+
+    await RealtimeBridge(FakeRealtimeConnector([session])).run(options, client)
+
+    assert session.sent == [
+        ("activity_start",),
+        ("audio", b"\x01\x00" * 160, INPUT_SAMPLE_RATE),
+        ("activity_end",),
+    ]
+    assert [e.data["error"] for e in client.events if e.kind == "error"] == ["invalid_signal"]
 
 
 async def test_relays_model_audio_transcripts_and_interruptions() -> None:

@@ -1,4 +1,4 @@
-"""Adapters are tested against duck-typed fakes that mirror google-genai 2.25 shapes."""
+"""Adapters are tested against duck-typed fakes that mirror google-genai 2.31 shapes."""
 
 import base64
 from contextlib import asynccontextmanager
@@ -108,8 +108,6 @@ def test_tts_sends_style_as_speech_metadata_annotation() -> None:
         {
             "type": "speech_metadata",
             "style": "warm",
-            "start_index": 0,
-            "end_index": len("¡Hola, amigo!".encode()),
         }
     ]
 

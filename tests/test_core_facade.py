@@ -81,7 +81,7 @@ def test_live_speech_config_is_the_official_sdk_type(creator: VoiceCreator) -> N
     assert replicated.mime_type == "audio/wav"
     assert replicated.voice_sample_audio == creator.voices.live_voice("me").sample_wav
     assert replicated.consent_audio
-    assert config.language_code == "es-MX"
+    assert config.language_code is None  # unsupported by native-audio Live models
 
     creator.voices.remember_consent_signature("me", "sig-1")
     signed = creator.live_speech_config("me").voice_config.replicated_voice_config

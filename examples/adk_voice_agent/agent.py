@@ -5,7 +5,7 @@ cloned voice goes in `RunConfig.speech_config` (built from your profile by
 `VoiceCreator.live_speech_config`), and the MCP server is attached as an `McpToolset`:
 launched over stdio by default, or remote over Streamable HTTP with a bearer token.
 
-    uv pip install "google-adk[mcp]>=2.10" -e ".[mcp]"
+    uv pip install "google-adk[mcp]>=2.12" -e ".[mcp]"
     python examples/adk_voice_agent/agent.py --profile me \\
         --prompt "Introduce yourself and tell me how many voice profiles I have"
 
